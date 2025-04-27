@@ -45,5 +45,13 @@
       "createdAt": "2025-01-05"
     }
   ],
-  "users": []
+  "users": [
+    {
+      "id": "9671",
+      "firstName": "isaac",
+      "lastName": "juma",
+      "email": "jumaisaq@gmail.com",
+      "password": "1234"
+    }
+  ]
 }
