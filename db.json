@@ -1,0 +1,49 @@
+{
+  "debts": [
+    {
+      "id": "1",
+      "name": "John Doe",
+      "debtName": "Rent Loan",
+      "amount": 5000,
+      "dueDate": "2025-05-15",
+      "notes": "For March rent",
+      "status": "unpaid",
+      "amountPaid": 0,
+      "createdAt": "2025-04-27"
+    },
+    {
+      "id": "2",
+      "name": "Jane Smith",
+      "debtName": "Phone Loan",
+      "amount": 12000,
+      "dueDate": "2025-06-01",
+      "notes": "Bought Samsung A15",
+      "status": "partial",
+      "amountPaid": 6000,
+      "createdAt": "2025-04-15"
+    },
+    {
+      "id": "3",
+      "name": "Michael Johnson",
+      "debtName": "Car Loan",
+      "amount": 35000,
+      "dueDate": "2025-07-20",
+      "notes": "Loan for the car purchase",
+      "status": "unpaid",
+      "amountPaid": 0,
+      "createdAt": "2025-03-30"
+    },
+    {
+      "id": "4",
+      "name": "Sarah Lee",
+      "debtName": "Student Loan",
+      "amount": 25000,
+      "dueDate": "2025-09-10",
+      "notes": "Loan for university fees",
+      "status": "paid",
+      "amountPaid": 25000,
+      "createdAt": "2025-01-05"
+    }
+  ],
+  "users": []
+}
