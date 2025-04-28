@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "./login.css";
 import { useNavigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "../AuthProvider";
+import { useAuth } from "../AuthProvider";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -13,28 +13,23 @@ export default function Login() {
 
   function handleSubmit(e) {
     e.preventDefault();
-
-    fetch("http://localhost:5000/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
+    fetch(`http://localhost:5000/users?email=${email}&password=${password}`)
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.length > 0) {
+        setMessage("Login successful!");
+        login(); // Call your login function
+        navigate("/dashboard"); // Navigate to dashboard
+      } else {
+        setMessage("Invalid email or password.");
+      }
     })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.success) {
-          setMessage("Login successful!");
-          login(); // Call the login function from context
-          navigate("/dashboard"); // Redirect to dashboard
-        } else {
-          setMessage(data.message || "Login failed.");
-        }
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-        setMessage("An error occurred. Please try again.");
-      });
+    .catch((error) => {
+      console.error("Error:", error);
+      setMessage("An error occurred. Please try again.");
+    });
+  
+   
   }
   return (
     <div className="login-container">
