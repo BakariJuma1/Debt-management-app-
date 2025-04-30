@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "./login.css";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../AuthProvider";
+import { useAuth } from "../../AuthProvider";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,22 +14,20 @@ export default function Login() {
   function handleSubmit(e) {
     e.preventDefault();
     fetch(`http://localhost:5000/users?email=${email}&password=${password}`)
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.length > 0) {
-        setMessage("Login successful!");
-        login(); // Call your login function
-        navigate("/dashboard"); // Navigate to dashboard
-      } else {
-        setMessage("Invalid email or password.");
-      }
-    })
-    .catch((error) => {
-      console.error("Error:", error);
-      setMessage("An error occurred. Please try again.");
-    });
-  
-   
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.length > 0) {
+          setMessage("Login successful!");
+          login(); // Call your login function
+          navigate("/dashboard"); // Navigate to dashboard
+        } else {
+          setMessage("Invalid email or password.");
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        setMessage("An error occurred. Please try again.");
+      });
   }
   return (
     <div className="login-container">
