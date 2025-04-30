@@ -2,7 +2,11 @@ import React from "react";
 import "../home/home.css";
 
 function Home() {
-  return (
+  
+  function handleClick(){
+
+  }
+  return(
     <>
       <div className="heroSection">
         <div className="heroContent">
@@ -10,7 +14,7 @@ function Home() {
             Track your Debts today <br />
             <strong>Ready to take the next step?</strong>
           </h1>
-          <button className="btn">Sign up</button>
+          <button className="btn" onClick={handleClick}>Sign up</button>
         </div>
       </div>
       <section className="featuresSection">
@@ -43,7 +47,9 @@ function Home() {
         </section>
       </section>
     </>
-  );
+  )
+
+  
 }
 
 export default Home;
