@@ -1,35 +1,4 @@
-/* Inside your styles.css or NavBar.css */
-nav {
-  background-color: #333;
-  color: white;
-  padding: 10px;
-}
 
-nav ul {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-}
-
-nav li {
-  display: inline;
-  margin-right: 15px;
-}
-
-nav a {
-  color: white;
-  text-decoration: none;
-}
-
-nav button {
-  background-color: #f44336;
-  color: white;
-  border: none;
-  padding: 5px 10px;
-  cursor: pointer;
-}
-/* SIGN UP */
-/* Main Container */
 .signup-container {
   height: 100vh;
   display: flex;
