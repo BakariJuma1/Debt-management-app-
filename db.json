@@ -1,49 +1,85 @@
 {
   "debts": [
-    {
-      "id": "1",
-      "name": "John Doe",
-      "debtName": "Rent Loan",
-      "amount": 5000,
-      "dueDate": "2025-05-15",
-      "notes": "For March rent",
-      "status": "unpaid",
-      "amountPaid": 0,
-      "createdAt": "2025-04-27"
-    },
-    {
-      "id": "2",
-      "name": "Jane Smith",
-      "debtName": "Phone Loan",
-      "amount": 12000,
-      "dueDate": "2025-06-01",
-      "notes": "Bought Samsung A15",
-      "status": "partial",
-      "amountPaid": 6000,
-      "createdAt": "2025-04-15"
-    },
-    {
-      "id": "3",
-      "name": "Michael Johnson",
-      "debtName": "Car Loan",
-      "amount": 35000,
-      "dueDate": "2025-07-20",
-      "notes": "Loan for the car purchase",
-      "status": "unpaid",
-      "amountPaid": 0,
-      "createdAt": "2025-03-30"
-    },
-    {
-      "id": "4",
-      "name": "Sarah Lee",
-      "debtName": "Student Loan",
-      "amount": 25000,
-      "dueDate": "2025-09-10",
-      "notes": "Loan for university fees",
-      "status": "paid",
-      "amountPaid": 25000,
-      "createdAt": "2025-01-05"
-    }
+    [
+      {
+        "id": "1",
+        "customerName": "John Doe",
+        "phone": "+254712345678",
+        "debtName": "Rent Loan",
+        "items": [
+          { "name": "Mabati", "quantity": 24, "price": 150 },
+          { "name": "Nails", "quantity": 4, "price": 200 }
+        ],
+        "amountPaid": 0,
+        "status": "unpaid",
+        "dueDate": "2025-05-15",
+        "receipt": "For March rent",
+        "createdAt": "2025-04-27",
+        "total": 4400
+      },
+      {
+        "id": "2",
+        "customerName": "Mary Wanjiku",
+        "phone": "+254700112233",
+        "debtName": "Fence Supplies",
+        "items": [
+          { "name": "Barbed Wire", "quantity": 3, "price": 1200 },
+          { "name": "Wood Posts", "quantity": 10, "price": 300 }
+        ],
+        "amountPaid": 1500,
+        "status": "partially paid",
+        "dueDate": "2025-05-10",
+        "receipt": "Fence project for shamba",
+        "createdAt": "2025-04-25",
+        "total": 6000
+      },
+      {
+        "id": "3",
+        "customerName": "Peter Otieno",
+        "phone": "+254701223344",
+        "debtName": "Construction Tools",
+        "items": [
+          { "name": "Hammer", "quantity": 2, "price": 700 },
+          { "name": "Spade", "quantity": 1, "price": 1200 },
+          { "name": "Wheelbarrow", "quantity": 1, "price": 3500 }
+        ],
+        "amountPaid": 2000,
+        "status": "unpaid",
+        "dueDate": "2025-05-20",
+        "receipt": "Paid deposit only",
+        "createdAt": "2025-04-26",
+        "total": 6100
+      },
+      {
+        "id": "4",
+        "customerName": "Grace Njeri",
+        "phone": "+254734556677",
+        "debtName": "Roofing Materials",
+        "items": [
+          { "name": "Iron Sheets", "quantity": 15, "price": 1000 },
+          { "name": "Timber", "quantity": 10, "price": 800 }
+        ],
+        "amountPaid": 10000,
+        "status": "partially paid",
+        "dueDate": "2025-06-01",
+        "receipt": "Roofing phase one",
+        "createdAt": "2025-04-20",
+        "total": 23000
+      },
+      {
+        "id": "5",
+        "customerName": "Brian Kiplagat",
+        "phone": "+254722334455",
+        "debtName": "Cement Purchase",
+        "items": [{ "name": "Cement Bags", "quantity": 20, "price": 750 }],
+        "amountPaid": 15000,
+        "status": "paid",
+        "dueDate": "2025-05-05",
+        "receipt": "Fully paid",
+        "createdAt": "2025-04-15",
+        "total": 15000
+      }
+    ]
   ],
   "users": [
     {
@@ -54,129 +90,11 @@
       "password": "1234"
     },
     {
-      "id": "e7c6",
-      "firstName": "jay",
-      "lastName": "juma",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "e5dd",
-      "firstName": "ee",
-      "lastName": "eeeee",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "749a",
-      "firstName": "eeee",
-      "lastName": "wwee",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
       "id": "8ab9",
       "firstName": "www",
       "lastName": "wwww",
       "email": "jumaisaq@gmail.com",
       "password": "1234"
-    },
-    {
-      "id": "492d",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "f4e1",
-      "firstName": "jay",
-      "lastName": "juma",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "9016",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "a3f8",
-      "firstName": "qqq",
-      "lastName": "qqq",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "f195",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "020d",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "6701",
-      "firstName": "r",
-      "lastName": "r",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "6bb1",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "f72b",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "81ab",
-      "firstName": "q",
-      "lastName": "qb",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "1052",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "3532",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "6870",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "acd2",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "bdb5",
-      "firstName": "j",
-      "lastName": "juma",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "ff1d",
-      "email": "jumaisaq@gmail.com",
-      "password": "1234"
-    },
-    {
-      "id": "30c9",
-      "firstName": "44",
-      "lastName": "444",
-      "email": "jumaisaq@gmail.com",
-      "password": "12345"
     }
   ]
 }
