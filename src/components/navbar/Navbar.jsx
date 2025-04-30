@@ -1,10 +1,14 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../AuthProvider";
 import "../navbar/navbar.css";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
-
+  const navigate = useNavigate();
+  function handleLogout() {
+    logout();
+    navigate("/login");
+  }
   return (
     <nav className="navbar">
       <div className="navbar-container">
@@ -27,7 +31,7 @@ const Navbar = () => {
                 </Link>
               </li>
               <li>
-                <button onClick={logout} className="nav-button">
+                <button onClick={handleLogout} className="nav-button">
                   Logout
                 </button>
               </li>
