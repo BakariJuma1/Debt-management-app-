@@ -1,5 +1,5 @@
 import React from "react";
-import Sidebar from "../dashboardcomponents/Sidebar";
+import Sidebar from "../sidebar/Sidebar";
 
 function AddDebt() {
   return (

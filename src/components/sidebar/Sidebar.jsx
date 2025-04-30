@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import "./dashboard.css";
+import "../sidebar/sidebar.css"
 
 export default function Sidebar() {
   return (
@@ -20,7 +20,6 @@ export default function Sidebar() {
             <li>
               <Link to="/settings">Settings</Link>
             </li>
-            
           </ul>
         </nav>
       </div>

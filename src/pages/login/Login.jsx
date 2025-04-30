@@ -17,8 +17,9 @@ export default function Login() {
       .then((response) => response.json())
       .then((data) => {
         if (data.length > 0) {
+          const user = data[0];
           setMessage("Login successful!");
-          login(); // Call your login function
+          login(user); // Call your login function
           navigate("/dashboard"); // Navigate to dashboard
         } else {
           setMessage("Invalid email or password.");

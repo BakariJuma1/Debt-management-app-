@@ -1,7 +1,12 @@
 import React from "react";
+import Sidebar from "../sidebar/Sidebar";
 
 function settings() {
-  return <div>settings</div>;
+  return (
+    <div>
+      <Sidebar />
+    </div>
+  );
 }
 
 export default settings;
