@@ -7,8 +7,16 @@
         "phone": "+254712345678",
         "debtName": "Rent Loan",
         "items": [
-          { "name": "Mabati", "quantity": 24, "price": 150 },
-          { "name": "Nails", "quantity": 4, "price": 200 }
+          {
+            "name": "Mabati",
+            "quantity": 24,
+            "price": 150
+          },
+          {
+            "name": "Nails",
+            "quantity": 4,
+            "price": 200
+          }
         ],
         "amountPaid": 0,
         "status": "unpaid",
@@ -23,8 +31,16 @@
         "phone": "+254700112233",
         "debtName": "Fence Supplies",
         "items": [
-          { "name": "Barbed Wire", "quantity": 3, "price": 1200 },
-          { "name": "Wood Posts", "quantity": 10, "price": 300 }
+          {
+            "name": "Barbed Wire",
+            "quantity": 3,
+            "price": 1200
+          },
+          {
+            "name": "Wood Posts",
+            "quantity": 10,
+            "price": 300
+          }
         ],
         "amountPaid": 1500,
         "status": "partially paid",
@@ -39,9 +55,21 @@
         "phone": "+254701223344",
         "debtName": "Construction Tools",
         "items": [
-          { "name": "Hammer", "quantity": 2, "price": 700 },
-          { "name": "Spade", "quantity": 1, "price": 1200 },
-          { "name": "Wheelbarrow", "quantity": 1, "price": 3500 }
+          {
+            "name": "Hammer",
+            "quantity": 2,
+            "price": 700
+          },
+          {
+            "name": "Spade",
+            "quantity": 1,
+            "price": 1200
+          },
+          {
+            "name": "Wheelbarrow",
+            "quantity": 1,
+            "price": 3500
+          }
         ],
         "amountPaid": 2000,
         "status": "unpaid",
@@ -56,8 +84,16 @@
         "phone": "+254734556677",
         "debtName": "Roofing Materials",
         "items": [
-          { "name": "Iron Sheets", "quantity": 15, "price": 1000 },
-          { "name": "Timber", "quantity": 10, "price": 800 }
+          {
+            "name": "Iron Sheets",
+            "quantity": 15,
+            "price": 1000
+          },
+          {
+            "name": "Timber",
+            "quantity": 10,
+            "price": 800
+          }
         ],
         "amountPaid": 10000,
         "status": "partially paid",
@@ -71,7 +107,13 @@
         "customerName": "Brian Kiplagat",
         "phone": "+254722334455",
         "debtName": "Cement Purchase",
-        "items": [{ "name": "Cement Bags", "quantity": 20, "price": 750 }],
+        "items": [
+          {
+            "name": "Cement Bags",
+            "quantity": 20,
+            "price": 750
+          }
+        ],
         "amountPaid": 15000,
         "status": "paid",
         "dueDate": "2025-05-05",
@@ -95,6 +137,20 @@
       "lastName": "wwww",
       "email": "jumaisaq@gmail.com",
       "password": "1234"
+    },
+    {
+      "id": "f424",
+      "firstName": "22",
+      "lastName": "222",
+      "email": "jumaisaq@gmail.com",
+      "password": "12345"
+    },
+    {
+      "id": "7ef4",
+      "firstName": "22",
+      "lastName": "222",
+      "email": "jumaisaq@gmail.com",
+      "password": "12345"
     }
   ]
 }

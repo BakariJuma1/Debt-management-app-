@@ -13,7 +13,7 @@ export default function Login() {
 
   function handleSubmit(e) {
     e.preventDefault();
-    fetch(`http://localhost:5000/users?email=${email}&password=${password}`)
+    fetch(`http://localhost:3001/users?email=${email}&password=${password}`)
       .then((response) => response.json())
       .then((data) => {
         if (data.length > 0) {
