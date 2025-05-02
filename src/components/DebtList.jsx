@@ -27,14 +27,15 @@ function DebtList() {
     };
   }, []);
 
-  
   function handleSearch(term) {
     setSearchTerm(term);
     if (term.trim() === "") {
       setDebts(allDebts);
     } else {
-      const filtered = debts.filter((debt) =>
-        debt.name.toLowerCase().includes(term.toLowerCase())
+      const filtered = debts.filter(
+        (debt) =>
+          debt.customerName.toLowerCase().includes(term.toLowerCase()) ||
+          debt.status.toLowerCase().includes(term.toLowerCase())
       );
       setDebts(filtered);
     }
