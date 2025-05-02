@@ -4,6 +4,7 @@ import DebtTable from "./debttable/DebtTable";
 
 function DebtList() {
   const [debts, setDebts] = useState([]);
+  const [allDebts, setAllDebts] = useState([]);
   const [searchterm, setSearchTerm] = useState("");
 
   useEffect(() => {
@@ -11,7 +12,10 @@ function DebtList() {
 
     fetch("http://localhost:3001/debts", { signal: controller.signal }) // Attach signal
       .then((res) => res.json())
-      .then((data) => setDebts(data))
+      .then((data) => {
+        setDebts(data);
+        setAllDebts(data);
+      })
       .catch((err) => {
         if (err.name !== "AbortError") {
           console.error("Fetch error:", err);
@@ -22,12 +26,18 @@ function DebtList() {
       controller.abort(); // Cleanup: cancel fetch if component unmounts
     };
   }, []);
+
+  
   function handleSearch(term) {
     setSearchTerm(term);
-    const filtered = debts.filter((debt) =>
-      debt.name.toLowerCase().includes(term.toLowerCase())
-    );
-    setDebts(filtered);
+    if (term.trim() === "") {
+      setDebts(allDebts);
+    } else {
+      const filtered = debts.filter((debt) =>
+        debt.name.toLowerCase().includes(term.toLowerCase())
+      );
+      setDebts(filtered);
+    }
   }
 
   return (
