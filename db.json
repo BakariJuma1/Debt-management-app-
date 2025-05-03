@@ -153,8 +153,16 @@
       "total": 12000
     }
   ],
-
-  "users": [{}],
+  "users": [
+    {},
+    {
+      "id": "b180",
+      "firstName": "ee",
+      "lastName": "eee",
+      "email": "jumaisaq@gmail.com",
+      "password": "12345"
+    }
+  ],
   "payments": [
     {
       "id": "p1",
