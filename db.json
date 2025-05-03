@@ -153,8 +153,18 @@
       "total": 12000
     }
   ],
-
-  "users": [{}],
+  "users": [
+    {
+      "id": "649d"
+    },
+    {
+      "id": "5315",
+      "firstName": "Mati",
+      "lastName": "Joseph",
+      "email": "crucialniccur@gmail.com",
+      "password": "ransom shii"
+    }
+  ],
   "payments": [
     {
       "id": "p1",
