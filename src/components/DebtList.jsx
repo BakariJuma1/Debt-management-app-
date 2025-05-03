@@ -10,7 +10,9 @@ function DebtList() {
   useEffect(() => {
     const controller = new AbortController(); // Create controller
 
-    fetch("http://localhost:3001/debts", { signal: controller.signal }) // Attach signal
+    fetch("https://debt-backend-lj7p.onrender.com/api/debts", {
+      signal: controller.signal,
+    }) // Attach signal
       .then((res) => res.json())
       .then((data) => {
         setDebts(data);
