@@ -5,7 +5,7 @@ function AddDebt() {
   const initialFormData = {
     customerName: "",
     phone: "",
-    idNUmber:"",
+    idNUmber: "",
     debtName: "",
     items: [
       {
@@ -39,7 +39,30 @@ function AddDebt() {
 
   function handleChange() {}
   function handleItemChange() {}
-  function handleSubmit() {}
+
+  function handleSubmit(e) {
+    e.preventDefault();
+
+    const newDebt = {
+      ...debt,
+    };
+    fetch("https://debt-backend-lj7p.onrender.com/api/debts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newDebt),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to save debt");
+        return res.json();
+      })
+      .then((data) => {
+        console.log("Debt saved:", data);
+        alert("Debt submitted successfully!");
+        setDebt(initialFormData); // reset form
+      });
+  }
   function addItem() {}
 
   return (
@@ -61,13 +84,6 @@ function AddDebt() {
             onChange={handleChange}
             placeholder="Phone"
           />
-
-          {/* <input
-            name="assignedTo"
-            value={debt.assignedTo}
-            onChange={handleChange}
-            placeholder="Assigned To (e.g. user ID)"
-          /> */}
 
           <h3>Items</h3>
           {debt.items.map((item, index) => (
