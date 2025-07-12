@@ -1,7 +1,7 @@
 .debt-table-container {
   padding: 1rem;
   overflow-x: auto;
-  margin-left: 230px; /* Adjusted for sidebar width */
+  margin-left: 250px; /* Adjusted for sidebar width */
 }
 
 .debt-table {

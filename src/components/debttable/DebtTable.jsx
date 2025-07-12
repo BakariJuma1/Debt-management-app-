@@ -1,11 +1,13 @@
 // DebtTable.jsx
 import React, { useState } from "react";
 import { FiMoreVertical } from "react-icons/fi";
-import { FaMoneyBillAlt, FaHistory, FaTrash } from "react-icons/fa";
+import { FaHistory, FaTrash } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import "./debttable.css";
 
 function DebtTable({ debts = [] }) {
   const [openMenuId, setOpenMenuId] = useState(null);
+  const navigate = useNavigate();
 
   const toggleMenu = (id) => {
     setOpenMenuId(openMenuId === id ? null : id);
@@ -64,12 +66,15 @@ function DebtTable({ debts = [] }) {
                   </span>
                 </td>
                 <td className="actions-cell">
-                  <button onClick={() => toggleMenu(debt.id)} className="dropdown-toggle">
+                  <button
+                    onClick={() => toggleMenu(debt.id)}
+                    className="dropdown-toggle"
+                  >
                     <FiMoreVertical size={20} />
                   </button>
                   {openMenuId === debt.id && (
                     <ul className="dropdown-menu">
-                      <li onClick={() => console.log("View History", debt)}>
+                      <li onClick={() => navigate(`/customers/${debt.id}`)}>
                         <FaHistory /> View History
                       </li>
                       <li onClick={() => console.log("Delete", debt)}>
