@@ -1,4 +1,3 @@
-// DebtTable.jsx
 import React, { useState } from "react";
 import { FiMoreVertical } from "react-icons/fi";
 import { FaHistory, FaTrash } from "react-icons/fa";
@@ -42,49 +41,56 @@ function DebtTable({ debts = [] }) {
         </thead>
         <tbody>
           {Array.isArray(debts) && debts.length > 0 ? (
-            debts.map((debt) => (
-              <tr key={debt.id}>
-                <td>{debt.customerName}</td>
-                <td>{debt.phone}</td>
-                <td>{formatCurrency(debt.total)}</td>
-                <td>{formatCurrency(debt.balance)}</td>
-                <td>
-                  <span
-                    className={`status-badge ${
-                      debt.balance === 0
-                        ? "paid"
-                        : debt.balance < debt.total
-                        ? "partial"
-                        : "unpaid"
-                    }`}
-                  >
-                    {debt.balance === 0
-                      ? "Paid"
-                      : debt.balance < debt.total
-                      ? "Partial"
-                      : "Unpaid"}
-                  </span>
-                </td>
-                <td className="actions-cell">
-                  <button
-                    onClick={() => toggleMenu(debt.id)}
-                    className="dropdown-toggle"
-                  >
-                    <FiMoreVertical size={20} />
-                  </button>
-                  {openMenuId === debt.id && (
-                    <ul className="dropdown-menu">
-                      <li onClick={() => navigate(`/customers/${debt.id}`)}>
-                        <FaHistory /> View History
-                      </li>
-                      <li onClick={() => console.log("Delete", debt)}>
-                        <FaTrash /> Delete
-                      </li>
-                    </ul>
-                  )}
-                </td>
-              </tr>
-            ))
+            debts.map((debt) => {
+              const amountPaid = debt.amountPaid || 0;
+              const balance = debt.total - amountPaid;
+
+              const status =
+                balance === 0
+                  ? "Paid"
+                  : amountPaid > 0
+                  ? "Partial"
+                  : "Unpaid";
+
+              const statusClass =
+                balance === 0
+                  ? "paid"
+                  : amountPaid > 0
+                  ? "partial"
+                  : "unpaid";
+
+              return (
+                <tr key={debt.id}>
+                  <td>{debt.customerName}</td>
+                  <td>{debt.phone}</td>
+                  <td>{formatCurrency(debt.total)}</td>
+                  <td>{formatCurrency(balance)}</td>
+                  <td>
+                    <span className={`status-badge ${statusClass}`}>
+                      {status}
+                    </span>
+                  </td>
+                  <td className="actions-cell">
+                    <button
+                      onClick={() => toggleMenu(debt.id)}
+                      className="dropdown-toggle"
+                    >
+                      <FiMoreVertical size={20} />
+                    </button>
+                    {openMenuId === debt.id && (
+                      <ul className="dropdown-menu">
+                        <li onClick={() => navigate(`/customers/${debt.id}`)}>
+                          <FaHistory /> View History
+                        </li>
+                        <li onClick={() => console.log("Delete", debt)}>
+                          <FaTrash /> Delete
+                        </li>
+                      </ul>
+                    )}
+                  </td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
               <td colSpan="6" className="no-debts-message">
