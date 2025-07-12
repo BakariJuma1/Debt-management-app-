@@ -1,8 +1,16 @@
 // DebtTable.jsx
-import React from "react";
+import React, { useState } from "react";
+import { FiMoreVertical } from "react-icons/fi";
+import { FaMoneyBillAlt, FaHistory, FaTrash } from "react-icons/fa";
 import "./debttable.css";
 
 function DebtTable({ debts = [] }) {
+  const [openMenuId, setOpenMenuId] = useState(null);
+
+  const toggleMenu = (id) => {
+    setOpenMenuId(openMenuId === id ? null : id);
+  };
+
   const formatCurrency = (amount) => {
     try {
       return new Intl.NumberFormat("en-KE", {
@@ -17,96 +25,70 @@ function DebtTable({ debts = [] }) {
     }
   };
 
-  const formatDate = (dateString) => {
-    try {
-      if (!dateString) return "N/A";
-      const date = new Date(dateString);
-      return isNaN(date.getTime())
-        ? "Invalid Date"
-        : date.toLocaleDateString("en-KE", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          });
-    } catch {
-      return "N/A";
-    }
-  };
-
   return (
     <div className="debt-table-container">
-      <div className="table-responsive">
-        <table className="debt-table">
-          <thead>
-            <tr className="table-header">
-              <th>Customer</th>
-              <th>Phone</th>
-              <th>Debt Name</th>
-              <th>Items</th>
-              <th>Paid</th>
-              <th>Status</th>
-              <th>Due Date</th>
-              <th>Created</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.isArray(debts) && debts.length > 0 ? (
-              debts.map((debt) => {
-                if (!debt || typeof debt !== "object") return null;
-
-                return (
-                  <tr
-                    key={debt.id || `debt-${Math.random().toString(36).substr(2, 9)}`}
-                    className={debt.status === "paid" ? "paid-row" : ""}
+      <table className="debt-table">
+        <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Phone</th>
+            <th>Total</th>
+            <th>Balance</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Array.isArray(debts) && debts.length > 0 ? (
+            debts.map((debt) => (
+              <tr key={debt.id}>
+                <td>{debt.customerName}</td>
+                <td>{debt.phone}</td>
+                <td>{formatCurrency(debt.total)}</td>
+                <td>{formatCurrency(debt.balance)}</td>
+                <td>
+                  <span
+                    className={`status-badge ${
+                      debt.balance === 0
+                        ? "paid"
+                        : debt.balance < debt.total
+                        ? "partial"
+                        : "unpaid"
+                    }`}
                   >
-                    <td data-label="Customer">{debt.customerName || "N/A"}</td>
-                    <td data-label="Phone">{debt.phone || "N/A"}</td>
-                    <td data-label="Debt Name">
-                      {debt.debtName || "Unnamed Debt"}
-                      {debt.receipt && (
-                        <div className="receipt-note">{debt.receipt}</div>
-                      )}
-                    </td>
-                    <td data-label="Items">
-                      <ul className="items-list">
-                        {Array.isArray(debt.items) ? (
-                          debt.items.map((item, i) => (
-                            <li key={`${debt.id}-item-${i}`}>
-                              {item?.name || "Unnamed Item"} (
-                              {item?.quantity || 0} × {formatCurrency(item?.price)})
-                            </li>
-                          ))
-                        ) : (
-                          <li>No items listed</li>
-                        )}
-                      </ul>
-                    </td>
-                    <td data-label="Paid">{formatCurrency(debt.amountPaid)}</td>
-                    <td
-                      data-label="Status"
-                      className={`status ${String(debt.status || "")
-                        .toLowerCase()
-                        .replace(" ", "-")}`}
-                    >
-                      <span className="status-badge">{debt.status || "Unknown"}</span>
-                    </td>
-                    <td data-label="Due Date">{formatDate(debt.dueDate)}</td>
-                    <td data-label="Created">{formatDate(debt.createdAt)}</td>
-                    <td data-label="Total">{formatCurrency(debt.total)}</td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td colSpan="9" className="no-debts-message">
-                  No debts found. Add a new debt to get started.
+                    {debt.balance === 0
+                      ? "Paid"
+                      : debt.balance < debt.total
+                      ? "Partial"
+                      : "Unpaid"}
+                  </span>
+                </td>
+                <td className="actions-cell">
+                  <button onClick={() => toggleMenu(debt.id)} className="dropdown-toggle">
+                    <FiMoreVertical size={20} />
+                  </button>
+                  {openMenuId === debt.id && (
+                    <ul className="dropdown-menu">
+                      <li onClick={() => console.log("View History", debt)}>
+                        <FaHistory /> View History
+                      </li>
+                      <li onClick={() => console.log("Delete", debt)}>
+                        <FaTrash /> Delete
+                      </li>
+                    </ul>
+                  )}
                 </td>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="6" className="no-debts-message">
+                No debts found. Add a new debt to get started.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
