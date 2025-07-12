@@ -1,154 +1,115 @@
-/* Table Container with 150px Sidebar */
+/* debttable.css */
 .debt-table-container {
-  margin-left: 170px; /* Matches your sidebar width */
-  padding: 20px;
-  transition: margin-left 0.3s ease;
+  width: 100%;
+  overflow-x: auto;
+  padding: 1rem;
+  box-sizing: border-box;
 }
-
 
 .table-responsive {
-  overflow-x: auto;
-  max-width: calc(100vw - 170px); /* Account for sidebar + padding */
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  max-height: 600px;
+  overflow-y: auto;
+  border-radius: 0.75rem;
+  background-color: white;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.03);
+  margin-left: 220px; /* Adjust this value to match your sidebar width */
 }
-
 
 .debt-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
-  table-layout: fixed; /* Ensures consistent column widths */
+  min-width: 900px;
 }
 
-.table-header {
-  background-color: #4caf50;
-  color: white;
+.debt-table thead th {
+  position: -webkit-sticky;
   position: sticky;
   top: 0;
+  background-color: #f3f4f6;
+  z-index: 2;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.table-header th {
-  padding: 12px 15px;
-  text-align: left;
+.debt-table tbody td {
+  padding: 1rem;
+  font-size: 0.95rem;
+  color: #374151;
+  vertical-align: top;
+  border-top: 1px solid #f3f4f6;
+  background-color: white;
+}
+
+.items-list {
+  padding-left: 1rem;
+  list-style-type: disc;
+}
+
+.status {
   font-weight: 600;
 }
 
-
-.debt-table tbody tr {
-  border-bottom: 1px solid #e2e8f0;
-  transition: background-color 0.2s;
-}
-
-.debt-table tbody tr:hover {
-  background-color: #f5f5f5;
-}
-
-.even-row {
-  background-color: #ffffff;
-}
-
-.odd-row {
-  background-color: #f9f9f9;
-}
-
-.debt-table td {
-  padding: 12px 15px;
-  vertical-align: top;
-  word-wrap: break-word; /* Handle long content */
-}
-
-/* Column Widths */
-.customer-name {
-  width: 10%;
-}
-.phone-number {
-  width: 10%;
-}
-.debt-name {
-  width: 10%;
-}
-.items-list {
-  width: 20%;
-}
-.amount-paid {
-  width: 8%;
-}
-.status {
-  width: 8%;
-}
-.due-date {
-  width: 10%;
-}
-.created-at {
-  width: 10%;
-}
-.total-amount {
-  width: 8%;
-}
-
-/* Items List */
-.items-list ul {
-  margin: 0;
-  padding-left: 1rem;
-}
-
-.items-list li {
-  margin-bottom: 0.3rem;
-  list-style-type: none;
-}
-
-/* Status Badges */
-.status {
+.status-badge {
+  background-color: #e0f2fe;
+  color: #0284c7;
   padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  border-radius: 999px;
+  font-size: 0.75rem;
   text-transform: capitalize;
-  display: inline-block;
 }
 
-.status.paid {
-  background-color: #c6f6d5;
-  color: #22543d;
+.paid-row {
+  background-color: #ecfdf5;
 }
 
-.status.pending {
-  background-color: #feebc8;
-  color: #7b341e;
+.receipt-note {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 4px;
 }
 
-.status.overdue {
-  background-color: #fed7d7;
-  color: #822727;
-}
-
-/* Empty State */
 .no-debts-message {
-  padding: 2rem;
   text-align: center;
-  color: #718096;
-  font-style: italic;
+  padding: 2rem;
+  color: #9ca3af;
 }
 
-/* Responsive Design */
+/* Responsive tweaks */
 @media (max-width: 768px) {
-  .debt-table-container {
-    margin-left: 0;
-    padding: 10px;
-  }
-
-  .table-responsive {
-    max-width: 100vw;
-  }
-
   .debt-table {
-    font-size: 0.8rem;
+    min-width: unset;
+    font-size: 0.9rem;
   }
 
-  .debt-table th,
-  .debt-table td {
-    padding: 8px 10px;
+  .debt-table thead {
+    display: none;
+  }
+
+  .debt-table tbody td {
+    display: block;
+    width: 100%;
+    text-align: right;
+    position: relative;
+    padding-left: 50%;
+    border: none;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .debt-table tbody td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 1rem;
+    width: 45%;
+    font-weight: 600;
+    color: #6b7280;
+    text-align: left;
+  }
+
+  .items-list {
+    padding-left: 0;
   }
 }

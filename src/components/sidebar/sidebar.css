@@ -1,16 +1,18 @@
-/* Sidebar Styles */
+/* sidebar.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
 .sidebar {
   width: 150px;
   height: 100vh;
   position: fixed;
-  left: 0;
   top: 0;
+  left: 0;
   background-color: #ffffff;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
-  padding: 1.5rem;
-  z-index: 100;
-  overflow-y: auto;
-  color: white;
+  border-right: 1px solid #e5e7eb;
+  padding: 2rem 1.5rem;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.04);
+  z-index: 200;
+  transition: all 0.3s ease-in-out;
 }
 
 .sidebar-content {
@@ -20,12 +22,12 @@
 }
 
 .sidebar-title {
-  color: #4caf50;
-  font-size: 1.5rem;
-  margin-bottom: 2rem;
-  padding-bottom: 4rem;
-  border-bottom: 1px solid #e2e8f0;
+  font-size: 1.75rem;
   font-weight: 700;
+  color: #3b82f6;
+  margin-bottom: 2rem;
+  z-index: 201;
+  position: relative;
 }
 
 .sidebar-nav {
@@ -39,40 +41,45 @@
 }
 
 .sidebar-item {
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .sidebar-link {
   display: flex;
   align-items: center;
-  padding: 0.75rem 1rem;
-  color: #4a5568;
+  gap: 12px;
   text-decoration: none;
-  border-radius: 8px;
-  transition: all 0.3s ease;
   font-weight: 500;
+  font-size: 1rem;
+  color: #374151;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
 }
 
 .sidebar-link:hover {
-  background-color: #f0fff4;
-  color: #4caf50;
-  transform: translateX(5px);
+  background-color: #eff6ff;
+  color: #2563eb;
+  transform: translateX(6px);
 }
 
 .sidebar-link.active {
-  background-color: #f0fff4;
-  color: #4caf50;
+  background-color: #dbeafe;
+  color: #1d4ed8;
   font-weight: 600;
 }
 
 .sidebar-icon {
-  margin-right: 12px;
-  font-size: 1.1rem;
-  width: 20px;
-  text-align: center;
+  font-size: 1.2rem;
 }
 
-/* Responsive Design */
+/* Add margin to dashboard content to prevent overlap */
+.dashboard-content {
+  margin-left: 220px;
+  transition: margin-left 0.3s ease-in-out;
+}
+
+/* Responsive - Collapse into horizontal nav bar */
 @media (max-width: 768px) {
   .sidebar {
     width: 100%;
@@ -80,29 +87,31 @@
     position: relative;
     padding: 1rem;
     box-shadow: none;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .dashboard-content {
+    margin-left: 0;
   }
 
   .sidebar-title {
     margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    font-size: 1.3rem;
+    font-size: 1.4rem;
   }
 
   .sidebar-list {
     display: flex;
     overflow-x: auto;
-    padding-bottom: 0.5rem;
+    gap: 1rem;
   }
 
   .sidebar-item {
-    margin-bottom: 0;
-    margin-right: 0.5rem;
-    white-space: nowrap;
+    flex: 0 0 auto;
   }
 
   .sidebar-link {
     padding: 0.5rem 0.75rem;
+    white-space: nowrap;
   }
 
   .sidebar-link:hover {

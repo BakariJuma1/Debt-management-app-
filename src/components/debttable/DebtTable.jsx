@@ -1,8 +1,8 @@
+// DebtTable.jsx
 import React from "react";
 import "./debttable.css";
 
 function DebtTable({ debts = [] }) {
-  // Safe currency formatting
   const formatCurrency = (amount) => {
     try {
       return new Intl.NumberFormat("en-KE", {
@@ -17,7 +17,6 @@ function DebtTable({ debts = [] }) {
     }
   };
 
-  // Safe date formatting
   const formatDate = (dateString) => {
     try {
       if (!dateString) return "N/A";
@@ -58,30 +57,24 @@ function DebtTable({ debts = [] }) {
 
                 return (
                   <tr
-                    key={
-                      debt.id ||
-                      `debt-${Math.random().toString(36).substr(2, 9)}`
-                    }
+                    key={debt.id || `debt-${Math.random().toString(36).substr(2, 9)}`}
                     className={debt.status === "paid" ? "paid-row" : ""}
                   >
-                    <td className="customer-name">
-                      {debt.customerName || "N/A"}
-                    </td>
-                    <td className="phone-number">{debt.phone || "N/A"}</td>
-                    <td className="debt-name">
+                    <td data-label="Customer">{debt.customerName || "N/A"}</td>
+                    <td data-label="Phone">{debt.phone || "N/A"}</td>
+                    <td data-label="Debt Name">
                       {debt.debtName || "Unnamed Debt"}
                       {debt.receipt && (
                         <div className="receipt-note">{debt.receipt}</div>
                       )}
                     </td>
-                    <td className="items-list">
-                      <ul>
+                    <td data-label="Items">
+                      <ul className="items-list">
                         {Array.isArray(debt.items) ? (
                           debt.items.map((item, i) => (
                             <li key={`${debt.id}-item-${i}`}>
                               {item?.name || "Unnamed Item"} (
-                              {item?.quantity || 0} ×{" "}
-                              {formatCurrency(item?.price)})
+                              {item?.quantity || 0} × {formatCurrency(item?.price)})
                             </li>
                           ))
                         ) : (
@@ -89,23 +82,18 @@ function DebtTable({ debts = [] }) {
                         )}
                       </ul>
                     </td>
-                    <td className="amount-paid">
-                      {formatCurrency(debt.amountPaid)}
-                    </td>
+                    <td data-label="Paid">{formatCurrency(debt.amountPaid)}</td>
                     <td
+                      data-label="Status"
                       className={`status ${String(debt.status || "")
                         .toLowerCase()
                         .replace(" ", "-")}`}
                     >
-                      <span className="status-badge">
-                        {debt.status || "Unknown"}
-                      </span>
+                      <span className="status-badge">{debt.status || "Unknown"}</span>
                     </td>
-                    <td className="due-date">{formatDate(debt.dueDate)}</td>
-                    <td className="created-at">{formatDate(debt.createdAt)}</td>
-                    <td className="total-amount">
-                      {formatCurrency(debt.total)}
-                    </td>
+                    <td data-label="Due Date">{formatDate(debt.dueDate)}</td>
+                    <td data-label="Created">{formatDate(debt.createdAt)}</td>
+                    <td data-label="Total">{formatCurrency(debt.total)}</td>
                   </tr>
                 );
               })

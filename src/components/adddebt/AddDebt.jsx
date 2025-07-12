@@ -1,11 +1,13 @@
+// Example: AddDebt.jsx with syntax cleaned and fixed
 import React, { useState } from "react";
 import Sidebar from "../sidebar/Sidebar";
 import "../adddebt/adddebt.css";
+
 function AddDebt() {
   const initialFormData = {
     customerName: "",
     phone: "",
-    idNUmber: "",
+    idNumber: "",
     debtName: "",
     items: [
       {
@@ -19,7 +21,7 @@ function AddDebt() {
     status: "",
     dueDate: "",
     receipt: "",
-    createdAt: "",
+    createdAt: new Date().toISOString(),
     total: "",
     assignedTo: "",
   };
@@ -37,15 +39,41 @@ function AddDebt() {
 
   const [debt, setDebt] = useState(initialFormData);
 
-  function handleChange() {}
-  function handleItemChange() {}
+  function handleChange(e) {
+    const { name, value } = e.target;
+    setDebt({ ...debt, [name]: value });
+  }
+
+  function handleItemChange(index, e) {
+    const { name, value } = e.target;
+    const updatedItems = [...debt.items];
+    updatedItems[index][name] = value;
+    setDebt({ ...debt, items: updatedItems });
+  }
+
+  function addItem() {
+    setDebt({
+      ...debt,
+      items: [...debt.items, { name: "", quantity: "", price: "", category: "" }],
+    });
+  }
+
+  function calculateTotal() {
+    return debt.items.reduce((acc, item) => {
+      const itemTotal = parseFloat(item.quantity || 0) * parseFloat(item.price || 0);
+      return acc + itemTotal;
+    }, 0);
+  }
 
   function handleSubmit(e) {
     e.preventDefault();
 
+    const total = calculateTotal();
     const newDebt = {
       ...debt,
+      total,
     };
+
     fetch("https://debt-backend-lj7p.onrender.com/api/debts", {
       method: "POST",
       headers: {
@@ -61,16 +89,18 @@ function AddDebt() {
         console.log("Debt saved:", data);
         alert("Debt submitted successfully!");
         setDebt(initialFormData); // reset form
+      })
+      .catch((err) => {
+        console.error(err);
+        alert("Something went wrong. Please try again.");
       });
   }
-  function addItem() {}
 
   return (
     <div>
       <Sidebar />
       <div className="container">
         <form onSubmit={handleSubmit}>
-          {/* //begin of customer info */}
           <h3>Customer Information</h3>
           <input
             name="customerName"
@@ -122,9 +152,8 @@ function AddDebt() {
               </select>
             </div>
           ))}
-          <button type="button" onClick={addItem}>
-            + Add Item
-          </button>
+
+          <button type="button" onClick={addItem}>+ Add Item</button>
 
           <h3>Payment Details</h3>
           <input
@@ -134,6 +163,7 @@ function AddDebt() {
             onChange={handleChange}
             placeholder="Amount Paid"
           />
+
           <select name="status" value={debt.status} onChange={handleChange}>
             <option value="">Select Status</option>
             {statusOptions.map((status) => (
@@ -142,12 +172,14 @@ function AddDebt() {
               </option>
             ))}
           </select>
+
           <input
             name="dueDate"
             type="date"
             value={debt.dueDate}
             onChange={handleChange}
           />
+
           <input
             name="receipt"
             value={debt.receipt}
@@ -156,7 +188,7 @@ function AddDebt() {
           />
 
           <p>
-            <strong>Total:</strong> Ksh {debt.total}
+            <strong>Total:</strong> Ksh {calculateTotal()}
           </p>
 
           <button type="submit">Submit Debt</button>
