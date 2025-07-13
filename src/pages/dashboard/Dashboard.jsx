@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/sidebar/Sidebar";
-import "./dashboard.css";
 import {
   PieChart,
   Pie,
@@ -9,13 +8,21 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import "../dashboard/dashboard.css";
+import "./dashboard.css";
+import MobileDashboard from "./MobileDashboard";
 
 const API_URL = "https://debt-backend-lj7p.onrender.com/api/debts";
 const COLORS = ["#00C49F", "#FFBB28", "#FF4F4F"];
 
 export default function Dashboard() {
   const [debts, setDebts] = useState([]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     fetchDebts();
@@ -31,11 +38,11 @@ export default function Dashboard() {
     }
   }
 
+  // === Calculations ===
   const totalDebts = debts.reduce((sum, d) => sum + d.total, 0);
   const paidDebts = debts.filter((d) => d.status === "paid");
   const unpaidDebts = debts.filter((d) => d.status === "unpaid");
   const overdueDebts = debts.filter((d) => d.status === "overdue");
-
   const totalPaid = paidDebts.reduce((sum, d) => sum + d.total, 0);
   const totalOverdue = overdueDebts.reduce((sum, d) => sum + d.total, 0);
   const totalUnpaid = totalDebts - totalPaid;
@@ -56,20 +63,20 @@ export default function Dashboard() {
     }));
 
   const today = new Date();
-const upcoming = debts
-  .filter((d) => {
-    if (!d.dueDate) return false;
-    const due = new Date(d.dueDate);
-    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const dueMidnight = new Date(due.getFullYear(), due.getMonth(), due.getDate());
-    const diff = (dueMidnight - todayMidnight) / (1000 * 60 * 60 * 24);
-    return d.status && d.status.toLowerCase() === "unpaid" && diff >= 0 && diff <= 7;
-  })
-  .map((d) => ({
-    name: d.customerName,
-    amount: d.total,
-    due: d.dueDate,
-  }));
+  const upcoming = debts
+    .filter((d) => {
+      if (!d.dueDate) return false;
+      const due = new Date(d.dueDate);
+      const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const dueMidnight = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+      const diff = (dueMidnight - todayMidnight) / (1000 * 60 * 60 * 24);
+      return d.status && d.status.toLowerCase() === "unpaid" && diff >= 0 && diff <= 7;
+    })
+    .map((d) => ({
+      name: d.customerName,
+      amount: d.total,
+      due: d.dueDate,
+    }));
 
   const activity = [...debts]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -80,6 +87,24 @@ const upcoming = debts
       date: new Date(d.createdAt).toLocaleDateString(),
     }));
 
+  // === Mobile/Desktop Switch ===
+  if (isMobile) {
+    return (
+      <MobileDashboard
+        debts={debts}
+        totalDebts={totalDebts}
+        totalPaid={totalPaid}
+        totalUnpaid={totalUnpaid}
+        overdueDebts={overdueDebts}
+        paidDebts={paidDebts}
+        activity={activity}
+        topDebtors={topDebtors}
+        upcoming={upcoming}
+      />
+    );
+  }
+
+  // === Default Desktop Layout ===
   return (
     <div className="dashboard-container">
       <Sidebar />
@@ -117,7 +142,7 @@ const upcoming = debts
           <ul className="activity-list">
             {activity.map((item, index) => (
               <li key={index}>
-                <strong>{item.customer}</strong> - {item.action} on {item.date}
+                <strong>{item.customer}</strong>  {item.action} on {item.date}
               </li>
             ))}
           </ul>
