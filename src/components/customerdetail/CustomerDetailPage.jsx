@@ -8,8 +8,8 @@ import {
   FaHistory,
   FaTrash,
 } from "react-icons/fa";
-import "./customerdetail.css";
 import Layout from "../layout/Layout";
+import "./customerdetail.css";
 
 function CustomerDetailPage() {
   const { customerId } = useParams();
@@ -25,14 +25,12 @@ function CustomerDetailPage() {
     receivedBy: "",
   });
   const [newItem, setNewItem] = useState({
-  name: "",
-  quantity: "",
-  price: "",
-  category: "",
- });
+    name: "",
+    quantity: "",
+    price: "",
+    category: "",
+  });
 
-
-  // Fetch customer data
   useEffect(() => {
     async function fetchCustomerData() {
       try {
@@ -54,12 +52,13 @@ function CustomerDetailPage() {
 
   const formatCurrency = (amount) => `Ksh${Number(amount || 0).toLocaleString()}`;
 
+  const balance = customer ? customer.total - (customer.amountPaid || 0) : 0;
+
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
     const updated = [...editedItems];
     const prev = updated[index][name];
     updated[index][name] = value;
-
     setEditedItems(updated);
     if (prev !== value) {
       addItemHistory(`Edited "${name}" from "${prev}" to "${value}"`);
@@ -71,6 +70,23 @@ function CustomerDetailPage() {
     const updated = editedItems.filter((_, i) => i !== index);
     setEditedItems(updated);
     addItemHistory(`Removed "${removed.name}" × ${removed.quantity}`);
+  };
+
+  const handleNewItemChange = (e) => {
+    const { name, value } = e.target;
+    setNewItem({ ...newItem, [name]: value });
+  };
+
+  const handleAddItem = async () => {
+    if (!newItem.name || !newItem.quantity || !newItem.price) {
+      alert("Please fill in all item fields");
+      return;
+    }
+
+    const updatedItems = [...editedItems, newItem];
+    setEditedItems(updatedItems);
+    setNewItem({ name: "", quantity: "", price: "", category: "" });
+    addItemHistory(`Added new item "${newItem.name}" × ${newItem.quantity}`);
   };
 
   const addItemHistory = (msg) => {
@@ -100,7 +116,6 @@ function CustomerDetailPage() {
 
       if (!res.ok) throw new Error("Failed to save changes");
       const updatedCustomer = await res.json();
-
       setCustomer(updatedCustomer);
       alert("Changes saved successfully!");
     } catch (error) {
@@ -108,143 +123,79 @@ function CustomerDetailPage() {
       alert("Error saving changes. Please try again.");
     }
   };
-  const handleNewItemChange = (e) => {
-  const { name, value } = e.target;
-  setNewItem({ ...newItem, [name]: value });
-};
-const handleAddItem = async () => {
-  if (!newItem.name || !newItem.quantity || !newItem.price) {
-    alert("Please fill in all item fields");
-    return;
-  }
 
-  const updatedItems = [...(customer.items || []), newItem];
-  const updatedCustomer = {
-    ...customer,
-    items: updatedItems,
-    total: updatedItems.reduce(
-      (acc, item) =>
-        acc + parseFloat(item.quantity || 0) * parseFloat(item.price || 0),
-      0
-    ),
+  const generateSummaryMessage = () => {
+    const itemList = editedItems
+      .map(
+        (item) =>
+          `- ${item.name} × ${item.quantity} @ Ksh${item.price} (${item.category || "N/A"})`
+      )
+      .join("\n");
+
+    const paymentList = payments
+      .map(
+        (p) =>
+          `- ${p.date}: Ksh${p.amount} via ${p.method}, received by ${p.receivedBy}`
+      )
+      .join("\n");
+
+    return encodeURIComponent(`Hello, I hope you are well. Here is the summary of your debt:
+      *Debt Summary for ${customer.customerName}*\n
+ Phone: ${customer.phone}
+ Total: Ksh${customer.total}
+ Balance: Ksh${balance}
+ Due Date: ${customer.dueDate || "N/A"}
+
+ *Items Taken:*
+${itemList || "No items listed."}
+
+ *Payments Made:*
+${paymentList || "No payments yet."}
+
+ Summary generated on ${new Date().toLocaleDateString()}`);
   };
 
-  // Save to backend
-  try {
-    const res = await fetch(`https://your-api-url.com/api/debts/${customer.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatedCustomer),
-    });
-
-    if (!res.ok) throw new Error("Failed to update items");
-    const updatedData = await res.json();
-
-    setCustomer(updatedData);
-    setNewItem({ name: "", quantity: "", price: "", category: "" });
-  } catch (error) {
-    console.error(error);
-    alert("Failed to add item. Try again.");
-  }
-};
-
-
-
   if (!customer) return <p>Loading customer info...</p>;
-  const balance = customer.total - (customer.amountPaid || 0);
 
   return (
     <Layout>
       <div className="customer-detail-container">
         <button className="back-button" onClick={() => navigate(-1)}>
-          &larr; Back to Table
+          &larr; Back
         </button>
 
         <h2>{customer.customerName} - {customer.phone}</h2>
-        <p>
-          <strong>Total:</strong> {formatCurrency(customer.total)} |{" "}
-          <strong>Balance:</strong> {formatCurrency(balance)}
-        </p>
+        <p><strong>Total:</strong> {formatCurrency(customer.total)} | <strong>Balance:</strong> {formatCurrency(balance)}</p>
 
+        {/* Items Section */}
         <section className="items-section">
           <h3><FaListUl /> Items Taken (Editable)</h3>
           {editedItems.map((item, index) => (
             <div key={index} className="editable-item">
-              <input
-                type="text"
-                name="name"
-                value={item.name}
-                onChange={(e) => handleItemChange(index, e)}
-                placeholder="Item Name"
-              />
-              <input
-                type="number"
-                name="quantity"
-                value={item.quantity}
-                onChange={(e) => handleItemChange(index, e)}
-                placeholder="Qty"
-              />
-              <input
-                type="number"
-                name="price"
-                value={item.price}
-                onChange={(e) => handleItemChange(index, e)}
-                placeholder="Price"
-              />
-              <button onClick={() => handleRemoveItem(index)} title="Remove item">
-                <FaTrash />
-              </button>
+              <input type="text" name="name" value={item.name} onChange={(e) => handleItemChange(index, e)} placeholder="Item Name" />
+              <input type="number" name="quantity" value={item.quantity} onChange={(e) => handleItemChange(index, e)} placeholder="Qty" />
+              <input type="number" name="price" value={item.price} onChange={(e) => handleItemChange(index, e)} placeholder="Price" />
+              <button onClick={() => handleRemoveItem(index)}><FaTrash /></button>
             </div>
           ))}
-          <button onClick={handleSaveChanges} className="save-btn">
-            Save Changes
-          </button>
+          <button onClick={handleSaveChanges} className="save-btn">Save Changes</button>
         </section>
+
+        {/* Add New Item */}
         <section className="add-item-form">
-  <h4>Add New Item</h4>
-  <input
-    name="name"
-    placeholder="Item Name"
-    value={newItem.name}
-    onChange={handleNewItemChange}
-  />
-  <input
-    name="quantity"
-    type="number"
-    placeholder="Quantity"
-    value={newItem.quantity}
-    onChange={handleNewItemChange}
-  />
-  <input
-    name="price"
-    type="number"
-    placeholder="Price"
-    value={newItem.price}
-    onChange={handleNewItemChange}
-  />
-  <input
-    name="category"
-    placeholder="Category (optional)"
-    value={newItem.category}
-    onChange={handleNewItemChange}
-  />
-  <button onClick={handleAddItem}>+ Add Item</button>
-  </section>
+          <h4>Add New Item</h4>
+          <input name="name" placeholder="Item Name" value={newItem.name} onChange={handleNewItemChange} />
+          <input name="quantity" type="number" placeholder="Quantity" value={newItem.quantity} onChange={handleNewItemChange} />
+          <input name="price" type="number" placeholder="Price" value={newItem.price} onChange={handleNewItemChange} />
+          <input name="category" placeholder="Category" value={newItem.category} onChange={handleNewItemChange} />
+          <button onClick={handleAddItem}>+ Add Item</button>
+        </section>
 
-
+        {/* Payment Section */}
         <section className="payment-form">
           <h3><FaMoneyBillAlt /> Add Payment</h3>
-          <input
-            name="amount"
-            placeholder="Amount"
-            value={newPayment.amount}
-            onChange={handleInputChange}
-          />
-          <select
-            name="method"
-            value={newPayment.method}
-            onChange={handleInputChange}
-          >
+          <input name="amount" placeholder="Amount" value={newPayment.amount} onChange={handleInputChange} />
+          <select name="method" value={newPayment.method} onChange={handleInputChange}>
             <option value="">Select Payment Method</option>
             <option value="Cash">Cash</option>
             <option value="M-Pesa">M-Pesa</option>
@@ -252,15 +203,11 @@ const handleAddItem = async () => {
             <option value="Cheque">Cheque</option>
             <option value="Other">Other</option>
           </select>
-          <input
-            name="receivedBy"
-            placeholder="Received By"
-            value={newPayment.receivedBy}
-            onChange={handleInputChange}
-          />
+          <input name="receivedBy" placeholder="Received By" value={newPayment.receivedBy} onChange={handleInputChange} />
           <button onClick={handleAddPayment}>Add Payment</button>
         </section>
 
+        {/* Payment History */}
         <section className="payment-history">
           <h3><FaHistory /> Payment History</h3>
           <ul>
@@ -272,6 +219,7 @@ const handleAddItem = async () => {
           </ul>
         </section>
 
+        {/* Item History */}
         <section className="item-history">
           <h3><FaHistory /> Change Log</h3>
           <ul>
@@ -281,12 +229,19 @@ const handleAddItem = async () => {
           </ul>
         </section>
 
+        {/* Actions */}
         <section className="actions">
           <button onClick={() => console.log("Export PDF")}>
             <FaFilePdf /> Export PDF
           </button>
-          <button onClick={() => console.log("Send Summary")}>
-            <FaEnvelope /> Send Summary
+          <button
+            onClick={() => {
+              const summary = generateSummaryMessage();
+              const phone = customer.phone.replace(/^0/, "254");
+              window.open(`https://wa.me/${phone}?text=${summary}`, "_blank");
+            }}
+          >
+            <FaEnvelope /> Send Summary o
           </button>
         </section>
       </div>
