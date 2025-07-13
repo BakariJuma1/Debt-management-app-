@@ -81,8 +81,10 @@ div > div + div {
 
 /* Responsive Tweaks */
 @media (max-width: 640px) {
+
   .container {
     padding: 1rem;
+    margin-left: 0;
   }
 
   input,

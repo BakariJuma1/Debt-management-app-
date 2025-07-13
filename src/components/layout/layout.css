@@ -1,0 +1,25 @@
+/* Layout base */
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f5f7fa;
+}
+
+.dashboard-content {
+  flex: 1;
+  padding: 2rem;
+  margin-left: 200px; /* leave space for sidebar on desktop */
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .dashboard-container {
+    flex-direction: column; /* stack topbar and content */
+  }
+
+  .dashboard-content {
+    margin-left: 0; /* no sidebar on mobile */
+    padding: 1rem;
+    margin-top: 60px; /* give space below topbar */
+  }
+}

@@ -1,0 +1,44 @@
+.mobile-topbar {
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-header {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  justify-content: space-between;
+}
+
+.logo-text {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #2d3748;
+}
+
+.menu-icon {
+  font-size: 1.4rem;
+  cursor: pointer;
+  color: #2d3748;
+}
+
+.mobile-menu {
+  display: flex;
+  flex-direction: column;
+  background: #f7fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.mobile-menu a {
+  padding: 0.75rem 1rem;
+  text-decoration: none;
+  color: #2d3748;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.mobile-menu a:hover {
+  background: #e2e8f0;
+}

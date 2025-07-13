@@ -1,6 +1,7 @@
 import React from "react";
 import { useDashboardData } from "../../hooks/useDashboardData";
 import "./mobile.css";
+import MobileTopbar from "../../components/mobiletopbar/MobileTopbar";
 
 export default function MobileDashboard() {
   const {
@@ -14,6 +15,7 @@ export default function MobileDashboard() {
 
   return (
     <div className="mobile-dashboard">
+        <MobileTopbar />
       <h1 className="mobile-title">Your Debts Overview</h1>
 
       {/* Overview */}

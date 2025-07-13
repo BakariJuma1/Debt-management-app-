@@ -25,7 +25,7 @@ function DebtList() {
       });
 
     return () => {
-      controller.abort(); // Cleanup: cancel fetch if component unmounts
+      controller.abort(); 
     };
   }, []);
 
