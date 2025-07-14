@@ -16,7 +16,7 @@ export default function MobileTopbar() {
         <div className="mobile-menu">
           <Link to="/dashboard" onClick={() => setOpen(false)}>Dashboard</Link>
           <Link to="/debts" onClick={() => setOpen(false)}>All Debts</Link>
-          <Link to="/add new debts" onClick={()=>setOpen(false)}>Add New Debt</Link>
+          <Link to="/add-debt" onClick={()=>setOpen(false)}>Add New Debt</Link>
           <Link to="/settings" onClick={() => setOpen(false)}>Settings</Link>
         </div>
       )}
