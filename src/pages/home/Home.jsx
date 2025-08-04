@@ -108,10 +108,7 @@ const Index = () => {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 mb-10">
                 <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2">
-                  Try Free for 14 Days <ArrowRight className="w-5 h-5" />
-                </button>
-                <button className="bg-white text-gray-700 font-semibold py-3 px-8 rounded-lg text-lg transition-all duration-300 border border-gray-300 hover:border-gray-400 shadow-sm hover:shadow-md flex items-center justify-center gap-2">
-                  See Demo <ChevronRight className="w-5 h-5" />
+                  Try Free PaySync <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
               <div className="flex flex-wrap gap-4 items-center">
@@ -133,8 +130,8 @@ const Index = () => {
                   <div className="space-y-4 mb-6">
                     {[
                       { name: "Wanjiku Groceries", amount: "Ksh 24,500", due: "Due today" },
-                      { name: "Muthoni Hardware", amount: "Ksh 18,200", due: "Due in 2 days" },
-                      { name: "Kamau Butchery", amount: "Ksh 32,000", due: "Overdue by 1 week" },
+                      { name: "lga Hardware", amount: "Ksh 18,200", due: "Due in 2 days" },
+                      { name: "Kings Butchery", amount: "Ksh 32,000", due: "Overdue by 1 week" },
                     ].map((customer, i) => (
                       <div key={i} className="border border-gray-200 rounded-lg p-4 hover:border-blue-200 transition-colors">
                         <div className="flex justify-between">
@@ -355,7 +352,7 @@ const Index = () => {
             Join thousands of Kenyan businesses getting paid faster with our system.
           </p>
           <button className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-4 px-10 rounded-lg text-lg transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 mx-auto">
-            Start 14-Day Free Trial <ArrowRight className="w-5 h-5" />
+            Ready to start today <ArrowRight className="w-5 h-5" />
           </button>
           <p className="text-gray-400 text-sm mt-6">
             <Check className="w-4 h-4 inline mr-2" /> No setup fees • Cancel anytime

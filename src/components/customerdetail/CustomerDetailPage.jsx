@@ -7,9 +7,11 @@ import {
   FaListUl,
   FaHistory,
   FaTrash,
+  FaArrowLeft,
+  FaPlus,
+  FaSave,
 } from "react-icons/fa";
 import Layout from "../layout/Layout";
-import "./customerdetail.css";
 
 function CustomerDetailPage() {
   const { customerId } = useParams();
@@ -30,10 +32,13 @@ function CustomerDetailPage() {
     price: "",
     category: "",
   });
+  const [activeTab, setActiveTab] = useState("items");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchCustomerData() {
       try {
+        setIsLoading(true);
         const res = await fetch("https://debt-backend-lj7p.onrender.com/api/debts");
         const allCustomers = await res.json();
         const customerData = allCustomers.find((c) => c.id === customerId);
@@ -44,13 +49,15 @@ function CustomerDetailPage() {
         setPayments(customerData.payments || []);
       } catch (error) {
         console.error("Error fetching customer data:", error);
+      } finally {
+        setIsLoading(false);
       }
     }
 
     fetchCustomerData();
   }, [customerId]);
 
-  const formatCurrency = (amount) => `Ksh${Number(amount || 0).toLocaleString()}`;
+  const formatCurrency = (amount) => `Ksh ${Number(amount || 0).toLocaleString()}`;
 
   const balance = customer ? customer.total - (customer.amountPaid || 0) : 0;
 
@@ -99,6 +106,11 @@ function CustomerDetailPage() {
   };
 
   const handleAddPayment = () => {
+    if (!newPayment.amount || !newPayment.method || !newPayment.receivedBy) {
+      alert("Please fill in all payment fields");
+      return;
+    }
+
     const today = new Date().toISOString().split("T")[0];
     const payment = { ...newPayment, date: today };
 
@@ -155,84 +167,351 @@ ${paymentList || "No payments yet."}
  Summary generated on ${new Date().toLocaleDateString()}`);
   };
 
-  if (!customer) return <p>Loading customer info...</p>;
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!customer) {
+    return (
+      <Layout>
+        <div className="p-4 text-center">
+          <p className="text-red-500">Customer not found</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Go Back
+          </button>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
-      <div className="customer-detail-container">
-        <button className="back-button" onClick={() => navigate(-1)}>
-          &larr; Back
-        </button>
+      <div className="container mx-auto p-4 max-w-6xl mt-30 " >
+        {/* Header Section */}
+        <div className="flex items-center mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center text-blue-600 hover:text-blue-800 mr-4"
+          >
+            <FaArrowLeft className="mr-2" /> Back
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">{customer.customerName}</h1>
+            <p className="text-gray-600">{customer.phone}</p>
+          </div>
+        </div>
 
-        <h2>{customer.customerName} - {customer.phone}</h2>
-        <p><strong>Total:</strong> {formatCurrency(customer.total)} | <strong>Balance:</strong> {formatCurrency(balance)}</p>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white p-4 rounded-lg shadow border border-gray-100">
+            <h3 className="text-gray-500 text-sm">Total Debt</h3>
+            <p className="text-2xl font-bold">{formatCurrency(customer.total)}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow border border-gray-100">
+            <h3 className="text-gray-500 text-sm">Amount Paid</h3>
+            <p className="text-2xl font-bold text-green-600">
+              {formatCurrency(customer.amountPaid || 0)}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow border border-gray-100">
+            <h3 className="text-gray-500 text-sm">Balance</h3>
+            <p className="text-2xl font-bold text-red-600">{formatCurrency(balance)}</p>
+          </div>
+        </div>
 
-        {/* Items Section */}
-        <section className="items-section">
-          <h3><FaListUl /> Items Taken (Editable)</h3>
-          {editedItems.map((item, index) => (
-            <div key={index} className="editable-item">
-              <input type="text" name="name" value={item.name} onChange={(e) => handleItemChange(index, e)} placeholder="Item Name" />
-              <input type="number" name="quantity" value={item.quantity} onChange={(e) => handleItemChange(index, e)} placeholder="Qty" />
-              <input type="number" name="price" value={item.price} onChange={(e) => handleItemChange(index, e)} placeholder="Price" />
-              <button onClick={() => handleRemoveItem(index)}><FaTrash /></button>
+        {/* Tabs */}
+        <div className="border-b border-gray-200 mb-6">
+          <nav className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab("items")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "items"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <FaListUl className="inline mr-2" /> Items
+            </button>
+            <button
+              onClick={() => setActiveTab("payments")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "payments"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <FaMoneyBillAlt className="inline mr-2" /> Payments
+            </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "history"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <FaHistory className="inline mr-2" /> History
+            </button>
+          </nav>
+        </div>
+
+        {/* Items Tab */}
+        {activeTab === "items" && (
+          <div className="space-y-6">
+            {/* Current Items */}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="p-4 border-b border-gray-200">
+                <h2 className="text-lg font-medium">Items Taken</h2>
+              </div>
+              <div className="divide-y divide-gray-200">
+                {editedItems.map((item, index) => (
+                  <div key={index} className="p-4 grid grid-cols-12 gap-4 items-center">
+                    <div className="col-span-4">
+                      <input
+                        type="text"
+                        name="name"
+                        value={item.name}
+                        onChange={(e) => handleItemChange(index, e)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Item Name"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <input
+                        type="number"
+                        name="quantity"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(index, e)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Qty"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <input
+                        type="number"
+                        name="price"
+                        value={item.price}
+                        onChange={(e) => handleItemChange(index, e)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Price"
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <input
+                        type="text"
+                        name="category"
+                        value={item.category || ""}
+                        onChange={(e) => handleItemChange(index, e)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Category"
+                      />
+                    </div>
+                    <div className="col-span-1 flex justify-end">
+                      <button
+                        onClick={() => handleRemoveItem(index)}
+                        className="text-red-600 hover:text-red-800 p-2"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="p-4 border-t border-gray-200">
+                <button
+                  onClick={handleSaveChanges}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <FaSave className="mr-2" /> Save Changes
+                </button>
+              </div>
             </div>
-          ))}
-          <button onClick={handleSaveChanges} className="save-btn">Save Changes</button>
-        </section>
 
-        {/* Add New Item */}
-        <section className="add-item-form">
-          <h4>Add New Item</h4>
-          <input name="name" placeholder="Item Name" value={newItem.name} onChange={handleNewItemChange} />
-          <input name="quantity" type="number" placeholder="Quantity" value={newItem.quantity} onChange={handleNewItemChange} />
-          <input name="price" type="number" placeholder="Price" value={newItem.price} onChange={handleNewItemChange} />
-          <input name="category" placeholder="Category" value={newItem.category} onChange={handleNewItemChange} />
-          <button onClick={handleAddItem}>+ Add Item</button>
-        </section>
+            {/* Add New Item */}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="p-4 border-b border-gray-200">
+                <h2 className="text-lg font-medium">Add New Item</h2>
+              </div>
+              <div className="p-4 grid grid-cols-12 gap-4">
+                <div className="col-span-4">
+                  <input
+                    name="name"
+                    placeholder="Item Name"
+                    value={newItem.name}
+                    onChange={handleNewItemChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <input
+                    name="quantity"
+                    type="number"
+                    placeholder="Quantity"
+                    value={newItem.quantity}
+                    onChange={handleNewItemChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <input
+                    name="price"
+                    type="number"
+                    placeholder="Price"
+                    value={newItem.price}
+                    onChange={handleNewItemChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <input
+                    name="category"
+                    placeholder="Category"
+                    value={newItem.category}
+                    onChange={handleNewItemChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <button
+                    onClick={handleAddItem}
+                    className="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
+                    <FaPlus />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-        {/* Payment Section */}
-        <section className="payment-form">
-          <h3><FaMoneyBillAlt /> Add Payment</h3>
-          <input name="amount" placeholder="Amount" value={newPayment.amount} onChange={handleInputChange} />
-          <select name="method" value={newPayment.method} onChange={handleInputChange}>
-            <option value="">Select Payment Method</option>
-            <option value="Cash">Cash</option>
-            <option value="M-Pesa">M-Pesa</option>
-            <option value="Bank Transfer">Bank Transfer</option>
-            <option value="Cheque">Cheque</option>
-            <option value="Other">Other</option>
-          </select>
-          <input name="receivedBy" placeholder="Received By" value={newPayment.receivedBy} onChange={handleInputChange} />
-          <button onClick={handleAddPayment}>Add Payment</button>
-        </section>
+        {/* Payments Tab */}
+        {activeTab === "payments" && (
+          <div className="space-y-6">
+            {/* Add Payment */}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="p-4 border-b border-gray-200">
+                <h2 className="text-lg font-medium">Add Payment</h2>
+              </div>
+              <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <input
+                    name="amount"
+                    placeholder="Amount"
+                    value={newPayment.amount}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <select
+                    name="method"
+                    value={newPayment.method}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Payment Method</option>
+                    <option value="Cash">Cash</option>
+                    <option value="M-Pesa">M-Pesa</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <input
+                    name="receivedBy"
+                    placeholder="Received By"
+                    value={newPayment.receivedBy}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <button
+                    onClick={handleAddPayment}
+                    className="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <FaPlus className="mr-2" /> Add Payment
+                  </button>
+                </div>
+              </div>
+            </div>
 
-        {/* Payment History */}
-        <section className="payment-history">
-          <h3><FaHistory /> Payment History</h3>
-          <ul>
-            {payments.map((p, i) => (
-              <li key={i}>
-                {p.date}: {formatCurrency(p.amount)} - {p.method} - Received by {p.receivedBy}
-              </li>
-            ))}
-          </ul>
-        </section>
+            {/* Payment History */}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="p-4 border-b border-gray-200">
+                <h2 className="text-lg font-medium">Payment History</h2>
+              </div>
+              <div className="divide-y divide-gray-200">
+                {payments.length > 0 ? (
+                  payments.map((p, i) => (
+                    <div key={i} className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500">Date</p>
+                        <p>{p.date}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Amount</p>
+                        <p className="font-medium">{formatCurrency(p.amount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Method</p>
+                        <p>{p.method}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Received By</p>
+                        <p>{p.receivedBy}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-gray-500">
+                    No payment history available
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
-        {/* Item History */}
-        <section className="item-history">
-          <h3><FaHistory /> Change Log</h3>
-          <ul>
-            {itemHistory.map((entry, i) => (
-              <li key={i}>{entry}</li>
-            ))}
-          </ul>
-        </section>
+        {/* History Tab */}
+        {activeTab === "history" && (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium">Change Log</h2>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {itemHistory.length > 0 ? (
+                itemHistory.map((entry, i) => (
+                  <div key={i} className="p-4">
+                    <p className="text-sm">{entry}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-gray-500">
+                  No changes recorded yet
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-        {/* Actions */}
-        <section className="actions">
-          <button onClick={() => console.log("Export PDF")}>
-            <FaFilePdf /> Export PDF
+        {/* Action Buttons */}
+        <div className="mt-6 flex flex-wrap gap-4">
+          <button
+            onClick={() => console.log("Export PDF")}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <FaFilePdf className="mr-2" /> Export PDF
           </button>
           <button
             onClick={() => {
@@ -240,10 +519,11 @@ ${paymentList || "No payments yet."}
               const phone = customer.phone.replace(/^0/, "254");
               window.open(`https://wa.me/${phone}?text=${summary}`, "_blank");
             }}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
           >
-            <FaEnvelope /> Send Summary o
+            <FaEnvelope className="mr-2" /> Send Summary via WhatsApp
           </button>
-        </section>
+        </div>
       </div>
     </Layout>
   );
