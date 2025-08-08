@@ -1,6 +1,9 @@
 import React, { useState } from "react";
+import { createUserWithEmailAndPassword, getIdToken } from "firebase/auth";
+import { auth } from "../../firebase"; // make sure this path is correct
 import { useAuth } from "../../AuthProvider";
 import { useNavigate, Link } from "react-router-dom";
+import axios from "axios";
 
 export default function SignUp() {
   const { login } = useAuth();
@@ -19,29 +22,29 @@ export default function SignUp() {
     setMessage("");
 
     try {
-      const response = await fetch(
-        "https://debt-backend-lj7p.onrender.com/api/users",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ firstName, lastName, email, password }),
-        }
-      );
+      // Firebase signup
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      // const idToken = await user.getIdToken();
 
-      const data = await response.json();
+      // Send user data + token to your backend
+      // await axios.post("https://debt-backend-lj7p.onrender.com/api/users", {
+      //   firstName,
+      //   lastName,
+      //   email,
+      //   firebase_uid: user.uid,
+      // }, {
+      //   headers: {
+      //     Authorization: `Bearer ${idToken}`,
+      //   },
+      // });
 
-      if (response.ok) {
-        setMessage("Sign up successful! Redirecting...");
-        login();
-        setTimeout(() => navigate("/dashboard"), 1500);
-      } else {
-        setMessage(data.message || "Sign up failed. Please try again.");
-      }
+      login(user); // Set the auth context user
+      setMessage("Sign up successful! Redirecting...");
+      setTimeout(() => navigate("/dashboard"), 1500);
     } catch (error) {
-      console.error("Error:", error);
-      setMessage("An error occurred. Please try again.");
+      console.error("Sign up error:", error);
+      setMessage(error.message || "Sign up failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -55,7 +58,7 @@ export default function SignUp() {
             Create your account
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Or{' '}
+            Or{" "}
             <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
               sign in to your existing account
             </Link>
@@ -63,7 +66,11 @@ export default function SignUp() {
         </div>
 
         {message && (
-          <div className={`rounded-md p-4 ${message.includes("success") ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>
+          <div
+            className={`rounded-md p-4 ${
+              message.includes("success") ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+            }`}
+          >
             <p className="text-sm font-medium">{message}</p>
           </div>
         )}
@@ -79,9 +86,8 @@ export default function SignUp() {
                   id="firstName"
                   name="firstName"
                   type="text"
-                  autoComplete="given-name"
                   required
-                  className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   placeholder="First Name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
@@ -95,9 +101,8 @@ export default function SignUp() {
                   id="lastName"
                   name="lastName"
                   type="text"
-                  autoComplete="family-name"
                   required
-                  className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   placeholder="Last Name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
@@ -113,9 +118,8 @@ export default function SignUp() {
                 id="email"
                 name="email"
                 type="email"
-                autoComplete="email"
                 required
-                className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -130,9 +134,8 @@ export default function SignUp() {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="new-password"
                 required
-                className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -153,7 +156,7 @@ export default function SignUp() {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 ) : (
-                  <svg className="h-5 w-5 text-blue-500 group-hover:text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <svg className="h-5 w-5 text-blue-500 group-hover:text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                   </svg>
                 )}
