@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { createUserWithEmailAndPassword, getIdToken } from "firebase/auth";
-import { auth } from "../../firebase"; // make sure this path is correct
 import { useAuth } from "../../AuthProvider";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
+import API_BASE_URL from "../../api";
+
 
 export default function SignUp() {
   const { login } = useAuth();
@@ -22,29 +22,49 @@ export default function SignUp() {
     setMessage("");
 
     try {
-      // Firebase signup
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      // const idToken = await user.getIdToken();
+      // Send signup data to your API
+      const response = await axios.post(`${API_BASE_URL}/register`, {
+        name: `${firstName} ${lastName}`,
+        email: email.trim(),
+        password
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
 
-      // Send user data + token to your backend
-      // await axios.post("https://debt-backend-lj7p.onrender.com/api/users", {
-      //   firstName,
-      //   lastName,
-      //   email,
-      //   firebase_uid: user.uid,
-      // }, {
-      //   headers: {
-      //     Authorization: `Bearer ${idToken}`,
-      //   },
-      // });
+      if (response.data) {
+        // Don't login automatically - wait for verification
+        setMessage("Registration successful! Please check your email for verification instructions.");
 
-      login(user); // Set the auth context user
-      setMessage("Sign up successful! Redirecting...");
-      setTimeout(() => navigate("/dashboard"), 1500);
+        // Redirect to verification page with email info
+        setTimeout(() => navigate("/verify-email", { state: { email } }), 2000);
+      } else {
+        throw new Error("Invalid response from server");
+      }
     } catch (error) {
       console.error("Sign up error:", error);
-      setMessage(error.message || "Sign up failed. Please try again.");
+      let errorMessage = "Sign up failed. Please try again.";
+
+      if (error.response) {
+        switch (error.response.status) {
+          case 400:
+            errorMessage = error.response.data?.message || "Validation error";
+            break;
+          case 409:
+            errorMessage = "Email already exists";
+            break;
+          case 500:
+            errorMessage = "Server error. Please try again later.";
+            break;
+          default:
+            errorMessage = error.response.data?.message || errorMessage;
+        }
+      } else if (error.request) {
+        errorMessage = "Network error. Please check your connection.";
+      }
+
+      setMessage(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -118,6 +138,7 @@ export default function SignUp() {
                 id="email"
                 name="email"
                 type="email"
+                autoComplete="email"
                 required
                 className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 placeholder="Email address"
@@ -134,6 +155,7 @@ export default function SignUp() {
                 id="password"
                 name="password"
                 type="password"
+                autoComplete="new-password"
                 required
                 className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 placeholder="Password"
