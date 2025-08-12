@@ -1,6 +1,10 @@
 import React, { useState } from "react";
+import axios from "axios";
 import { FiPlus, FiDollarSign, FiCalendar, FiUser, FiPhone, FiFileText } from "react-icons/fi";
 import Layout from "../layout/Layout";
+import API_BASE_URL from "../../api";
+// Define your API base URL in one place
+
 
 function AddDebt() {
   const initialFormData = {
@@ -46,36 +50,37 @@ function AddDebt() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setDebt({ ...debt, [name]: value });
+    setDebt((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
-    const updatedItems = [...debt.items];
-    updatedItems[index][name] = value;
-    setDebt({ ...debt, items: updatedItems });
-  };
-
-  const addItem = () => {
-    setDebt({
-      ...debt,
-      items: [
-        ...debt.items,
-        { name: "", quantity: "", price: "", category: "" },
-      ],
+    setDebt((prev) => {
+      const updatedItems = [...prev.items];
+      updatedItems[index][name] = value;
+      return { ...prev, items: updatedItems };
     });
   };
 
+  const addItem = () => {
+    setDebt((prev) => ({
+      ...prev,
+      items: [...prev.items, { name: "", quantity: "", price: "", category: "" }],
+    }));
+  };
+
   const removeItem = (index) => {
-    const updatedItems = debt.items.filter((_, i) => i !== index);
-    setDebt({ ...debt, items: updatedItems });
+    setDebt((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }));
   };
 
   const calculateTotal = () => {
     return debt.items.reduce((acc, item) => {
-      const itemTotal =
-        parseFloat(item.quantity || 0) * parseFloat(item.price || 0);
-      return acc + itemTotal;
+      const quantity = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.price) || 0;
+      return acc + quantity * price;
     }, 0);
   };
 
@@ -86,24 +91,12 @@ function AddDebt() {
 
     try {
       const total = calculateTotal();
-      const newDebt = {
-        ...debt,
-        total,
-      };
+      const newDebt = { ...debt, total };
 
-      const response = await fetch("https://debt-backend-lj7p.onrender.com/api/debts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(newDebt),
+      const { data } = await axios.post(`${API_BASE_URL}/debts`, newDebt, {
+        headers: { "Content-Type": "application/json" },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to save debt");
-      }
-
-      const data = await response.json();
       console.log("Debt saved:", data);
       alert("Debt submitted successfully!");
       setDebt(initialFormData);
@@ -119,7 +112,7 @@ function AddDebt() {
     <Layout>
       <div className="container mx-auto p-4 max-w-4xl">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">Add New Debt</h1>
-        
+
         {error && (
           <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
             <p>{error}</p>
@@ -208,7 +201,10 @@ function AddDebt() {
             </div>
 
             {debt.items.map((item, index) => (
-              <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-4 items-end">
+              <div
+                key={index}
+                className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-4 items-end"
+              >
                 <div className="md:col-span-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Item Name
@@ -292,7 +288,10 @@ function AddDebt() {
 
             <div className="mt-4 p-3 bg-gray-50 rounded-md">
               <p className="text-lg font-semibold text-gray-800">
-                Subtotal: <span className="text-blue-600">Ksh {calculateTotal().toLocaleString()}</span>
+                Subtotal:{" "}
+                <span className="text-blue-600">
+                  Ksh {calculateTotal().toLocaleString()}
+                </span>
               </p>
             </div>
           </div>

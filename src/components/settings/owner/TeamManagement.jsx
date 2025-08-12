@@ -1,169 +1,181 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useAuth } from "../../../AuthProvider";
 import API_BASE_URL from "../../../api";
 
 const TeamManagement = () => {
-  // State for all team members
+  const { token } = useAuth();
   const [teamMembers, setTeamMembers] = useState([]);
-  const [loadingMembers, setLoadingMembers] = useState(false);
-  
-  // State for onboarding new members
-  const [onboardingData, setOnboardingData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    role: "salesman" // default role
-  });
-  
-  // State for editing members
-  const [editingMember, setEditingMember] = useState(null);
-  const [editFormData, setEditFormData] = useState({
-    role: ""
-  });
-  
-  // UI state
+  const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("members");
   const [actionLogs, setActionLogs] = useState([]);
+  
+  // New invitation form state
+  const [inviteForm, setInviteForm] = useState({
+    name: "",
+    email: "",
+    role: "salesperson"
+  });
 
-  // Available roles
-  const roles = ["owner", "admin", "manager", "salesman"];
-
-  // Fetch all team members
-  const fetchTeamMembers = async () => {
-    setLoadingMembers(true);
+  // Fetch team data (members + invitations)
+  const fetchTeamData = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await axios.get(`${API_BASE_URL}owner/users`);
-      setTeamMembers(response.data);
-    } catch (error) {
-      setMessage({ type: "error", text: "Failed to fetch team members" });
+      const response = await axios.get(`${API_BASE_URL}/owner/team`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setTeamMembers(response.data.users || []);
+      setInvitations(response.data.invitations || []);
+    } catch (err) {
+      console.error("Failed to fetch team data:", err);
+      setError("Failed to load team data. Please try again.");
     } finally {
-      setLoadingMembers(false);
+      setLoading(false);
     }
   };
 
   // Fetch action logs
   const fetchActionLogs = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/changelogs`);
+      const response = await axios.get(`${API_BASE_URL}/changelogs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setActionLogs(response.data);
-    } catch (error) {
-      console.error("Failed to fetch action logs:", error);
+    } catch (err) {
+      console.error("Failed to fetch action logs:", err);
+      // Don't show error if it's just CORS - we'll handle it gracefully
+      if (err.code !== "ERR_NETWORK") {
+        setError("Failed to load action logs. Please try again.");
+      }
+    }
+  };
+
+  // Send new invitation
+  const sendInvitation = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/owner/invitations`,
+        inviteForm,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setInviteForm({ name: "", email: "", role: "salesperson" });
+      fetchTeamData(); // Refresh the list
+      setError(null);
+    } catch (err) {
+      console.error("Failed to send invitation:", err);
+      setError(err.response?.data?.message || "Failed to send invitation. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Resend invitation
+  const resendInvitation = async (invitationId) => {
+    setLoading(true);
+    try {
+      await axios.post(
+        `${API_BASE_URL}/owner/invitations/${invitationId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchTeamData(); // Refresh data
+      setError(null);
+    } catch (err) {
+      console.error("Failed to resend invitation:", err);
+      setError(err.response?.data?.message || "Failed to resend invitation. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cancel invitation
+  const cancelInvitation = async (invitationId) => {
+    if (!window.confirm("Are you sure you want to cancel this invitation?")) return;
+    
+    setLoading(true);
+    try {
+      await axios.delete(
+        `${API_BASE_URL}/owner/invitations/${invitationId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchTeamData(); // Refresh data
+      setError(null);
+    } catch (err) {
+      console.error("Failed to cancel invitation:", err);
+      setError("Failed to cancel invitation. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update user role
+  const updateUserRole = async (userId, newRole) => {
+    setLoading(true);
+    try {
+      await axios.put(
+        `${API_BASE_URL}/owner/team/${userId}`,
+        { role: newRole },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchTeamData(); // Refresh data
+      setError(null);
+    } catch (err) {
+      console.error("Failed to update user role:", err);
+      setError("Failed to update user role. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Remove user
+  const removeUser = async (userId) => {
+    if (!window.confirm("Are you sure you want to remove this user?")) return;
+    
+    setLoading(true);
+    try {
+      await axios.delete(
+        `${API_BASE_URL}/owner/team/${userId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchTeamData(); // Refresh data
+      setError(null);
+    } catch (err) {
+      console.error("Failed to remove user:", err);
+      setError("Failed to remove user. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   // Load data on component mount
   useEffect(() => {
-    fetchTeamMembers();
+    fetchTeamData();
     fetchActionLogs();
-  }, []);
-
-  // Handle onboarding form changes
-  const handleOnboardingChange = (e) => {
-    setOnboardingData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
-  };
-
-  // Handle edit form changes
-  const handleEditChange = (e) => {
-    setEditFormData({
-      role: e.target.value
-    });
-  };
-
-  // Submit new team member
-  const handleOnboardingSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-
-    try {
-      const response = await axios.post(`${API_BASE_URL}/owner/invite`, onboardingData);
-      setMessage({ type: "success", text: "Invite sent successfully!" });
-      setOnboardingData({ name: "", email: "", phone: "", role: "salesman" });
-      fetchTeamMembers(); // Refresh the list
-      fetchActionLogs(); // Refresh logs
-    } catch (error) {
-      setMessage({ type: "error", text: error.response?.data?.message || "Error sending invite." });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Start editing a member
-  const startEditing = (member) => {
-    setEditingMember(member);
-    setEditFormData({
-      role: member.role
-    });
-  };
-
-  // Cancel editing
-  const cancelEditing = () => {
-    setEditingMember(null);
-  };
-
-  // Submit member edits
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    if (!editingMember) return;
-
-    setLoading(true);
-    try {
-      await axios.put(`${API_BASE_URL}/team-members/${editingMember.id}`, editFormData);
-      setMessage({ type: "success", text: "Member updated successfully!" });
-      setEditingMember(null);
-      fetchTeamMembers(); // Refresh the list
-      fetchActionLogs(); // Refresh logs
-    } catch (error) {
-      setMessage({ type: "error", text: error.response?.data?.message || "Error updating member." });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Resend invite
-  const resendInvite = async (memberId) => {
-    setLoading(true);
-    try {
-      await axios.post(`${API_BASE_URL}/team-members/${memberId}/resend-invite`);
-      setMessage({ type: "success", text: "Invite resent successfully!" });
-      fetchActionLogs(); // Refresh logs
-    } catch (error) {
-      setMessage({ type: "error", text: error.response?.data?.message || "Error resending invite." });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Remove team member
-  const removeMember = async (memberId) => {
-    if (!window.confirm("Are you sure you want to remove this team member?")) return;
-    
-    setLoading(true);
-    try {
-      await axios.delete(`${API_BASE_URL}/team-members/${memberId}`);
-      setMessage({ type: "success", text: "Member removed successfully!" });
-      fetchTeamMembers(); // Refresh the list
-      fetchActionLogs(); // Refresh logs
-    } catch (error) {
-      setMessage({ type: "error", text: error.response?.data?.message || "Error removing member." });
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [token]);
 
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Team Management</h1>
       
-      {/* Message display */}
-      {message && (
-        <div className={`mb-6 p-4 rounded ${message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-          {message.text}
+      {/* Error message */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 text-red-700 rounded">
+          {error}
+          <button 
+            onClick={() => setError(null)} 
+            className="float-right font-bold"
+          >
+            ×
+          </button>
         </div>
       )}
       
@@ -176,10 +188,10 @@ const TeamManagement = () => {
           Team Members
         </button>
         <button
-          className={`py-2 px-4 font-medium ${activeTab === "onboarding" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-500"}`}
-          onClick={() => setActiveTab("onboarding")}
+          className={`py-2 px-4 font-medium ${activeTab === "invitations" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-500"}`}
+          onClick={() => setActiveTab("invitations")}
         >
-          Onboarding
+          Invitations
         </button>
         <button
           className={`py-2 px-4 font-medium ${activeTab === "actions" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-500"}`}
@@ -189,214 +201,185 @@ const TeamManagement = () => {
         </button>
       </div>
       
+      {/* Loading state */}
+      {loading && <div className="text-center py-4">Loading...</div>}
+      
       {/* Team Members Tab */}
       {activeTab === "members" && (
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">Team Members</h2>
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {teamMembers.map((user) => (
+                <tr key={user.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">{user.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <select
+                      value={user.role}
+                      onChange={(e) => updateUserRole(user.id, e.target.value)}
+                      className="border rounded p-1"
+                      disabled={loading}
+                    >
+                      <option value="manager">Manager</option>
+                      <option value="salesperson">Salesperson</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => removeUser(user.id)}
+                      className="text-red-600 hover:text-red-800"
+                      disabled={loading}
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      
+      {/* Invitations Tab */}
+      {activeTab === "invitations" && (
+        <div className="space-y-6">
+          {/* Invitation Form */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold mb-4">Send New Invitation</h2>
+            <form onSubmit={sendInvitation} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={inviteForm.name}
+                  onChange={(e) => setInviteForm({...inviteForm, name: e.target.value})}
+                  className="w-full px-3 py-2 border rounded"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm({...inviteForm, email: e.target.value})}
+                  className="w-full px-3 py-2 border rounded"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select
+                  value={inviteForm.role}
+                  onChange={(e) => setInviteForm({...inviteForm, role: e.target.value})}
+                  className="w-full px-3 py-2 border rounded"
+                >
+                  <option value="manager">Manager</option>
+                  <option value="salesperson">Salesperson</option>
+                </select>
+              </div>
+              
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                Send Invitation
+              </button>
+            </form>
+          </div>
           
-          {loadingMembers ? (
-            <p>Loading team members...</p>
-          ) : (
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* Pending Invitations List */}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <h2 className="text-xl font-semibold p-6">Pending Invitations</h2>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {invitations.map((invite) => (
+                  <tr key={invite.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">{invite.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{invite.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{invite.role}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">
+                        Pending
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap space-x-2">
+                      <button
+                        onClick={() => resendInvitation(invite.id)}
+                        className="text-blue-600 hover:text-blue-800"
+                        disabled={loading}
+                      >
+                        Resend
+                      </button>
+                      <button
+                        onClick={() => cancelInvitation(invite.id)}
+                        className="text-red-600 hover:text-red-800"
+                        disabled={loading}
+                      >
+                        Cancel
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Action Logs Tab */}
+      {activeTab === "actions" && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Action Logs</h2>
+            {actionLogs.length > 0 ? (
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Target</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {teamMembers.map((member) => (
-                    <tr key={member.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">{member.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{member.email}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{member.phone || "-"}</td>
+                  {actionLogs.map((log) => (
+                    <tr key={log.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">{log.action}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{log.changed_by_name || log.changed_by}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{log.target_type}: {log.target_name || log.target_id}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {editingMember?.id === member.id ? (
-                          <select
-                            name="role"
-                            value={editFormData.role}
-                            onChange={handleEditChange}
-                            className="border rounded p-1"
-                          >
-                            {roles.map((role) => (
-                              <option key={role} value={role}>{role}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          member.role
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {member.status === "active" ? (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                            Pending
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {editingMember?.id === member.id ? (
-                          <>
-                            <button
-                              onClick={handleEditSubmit}
-                              className="text-blue-600 hover:text-blue-900 mr-2"
-                              disabled={loading}
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={cancelEditing}
-                              className="text-gray-600 hover:text-gray-900"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => startEditing(member)}
-                              className="text-blue-600 hover:text-blue-900 mr-2"
-                            >
-                              Edit
-                            </button>
-                            {member.status !== "active" && (
-                              <button
-                                onClick={() => resendInvite(member.id)}
-                                className="text-green-600 hover:text-green-900 mr-2"
-                                disabled={loading}
-                              >
-                                Resend Invite
-                              </button>
-                            )}
-                            <button
-                              onClick={() => removeMember(member.id)}
-                              className="text-red-600 hover:text-red-900"
-                              disabled={loading}
-                            >
-                              Remove
-                            </button>
-                          </>
-                        )}
+                        {new Date(log.timestamp).toLocaleString()}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* Onboarding Tab */}
-      {activeTab === "onboarding" && (
-        <div className="max-w-md mx-auto p-6 bg-white rounded-md shadow-md">
-          <h2 className="text-2xl font-semibold mb-4">Onboard New Team Member</h2>
-          
-          <form onSubmit={handleOnboardingSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="name" className="block mb-1 font-medium">Name</label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                value={onboardingData.name}
-                onChange={handleOnboardingChange}
-                required
-                className="w-full px-3 py-2 border rounded"
-                placeholder="Full name"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block mb-1 font-medium">Email</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={onboardingData.email}
-                onChange={handleOnboardingChange}
-                required
-                className="w-full px-3 py-2 border rounded"
-                placeholder="member@example.com"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="phone" className="block mb-1 font-medium">Phone</label>
-              <input
-                id="phone"
-                name="phone"
-                type="tel"
-                value={onboardingData.phone}
-                onChange={handleOnboardingChange}
-                className="w-full px-3 py-2 border rounded"
-                placeholder="+254 700 000000"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="role" className="block mb-1 font-medium">Role</label>
-              <select
-                id="role"
-                name="role"
-                value={onboardingData.role}
-                onChange={handleOnboardingChange}
-                className="w-full px-3 py-2 border rounded"
-                required
-              >
-                {roles.filter(role => role !== "owner").map((role) => (
-                  <option key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-2 px-4 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition ${
-                loading ? "opacity-70 cursor-not-allowed" : ""
-              }`}
-            >
-              {loading ? "Sending Invite..." : "Send Invite"}
-            </button>
-          </form>
-        </div>
-      )}
-      
-      {/* Action Logs Tab */}
-      {activeTab === "actions" && (
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">Action Logs</h2>
-          
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Changed By</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {actionLogs.map((log) => (
-                  <tr key={log.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">{log.action}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{log.target_type}: {log.target_name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{log.changed_by_name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                {loading ? "Loading action logs..." : "No action logs available"}
+              </div>
+            )}
           </div>
         </div>
       )}

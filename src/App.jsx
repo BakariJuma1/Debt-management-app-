@@ -11,7 +11,7 @@ import CustomerDetailPage from "./components/customerdetail/CustomerDetailPage";
 import VerifyEmail from "./pages/verify email/VerifyEmail";
 import SettingsWrapper from "./components/settings/SettingsWrapper";
 import DashboardRouter from "./components/dashboard/DashboardRouter";
-
+import AcceptInvite from "./components/acceptinvite/AcceptInvite";
 
 function App() {
   return (
@@ -24,6 +24,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/dashboard/*" element={<DashboardRouter />} />
+          <Route path="/accept-invite" element={<AcceptInvite />} />
 
           <Route path="/debts" element={<MyDebts />} />
           <Route path="/add-debt" element={<AddDebt />} />
