@@ -18,9 +18,10 @@ export default function AcceptInvite() {
 
   useEffect(() => {
     if (!token) {
-      setError("Invitation token is missing");
+      setError("Invitation token is missing or invalid");
+      navigate("/login"); // Redirect if no token
     }
-  }, [token]);
+  }, [token, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -31,16 +32,12 @@ export default function AcceptInvite() {
   };
 
   const validateForm = () => {
-    if (!formData.password || formData.password.length < 6) {
+    if (formData.password.length < 6) {
       setError("Password must be at least 6 characters");
       return false;
     }
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
-      return false;
-    }
-    if (!token) {
-      setError("Invitation token is missing");
       return false;
     }
     return true;
@@ -55,20 +52,26 @@ export default function AcceptInvite() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/accept-invite`, {
+      // 1. Accept invitation and create account
+      const inviteResponse = await axios.post(`${API_BASE_URL}/accept-invite`, {
         token,
         password: formData.password,
       });
 
-      const { access_token, user } = response.data;
+      const { access_token, user } = inviteResponse.data;
+      
+      // 2. Automatically log in the user (no separate login call needed)
+      // Since the backend already verified everything
       login(user, access_token);
+      
+      // 3. Redirect to dashboard
       navigate("/dashboard");
 
     } catch (err) {
       const errorMessage = err.response?.data?.message ||
+        err.message ||
         "Failed to accept invitation. Please try again.";
       setError(errorMessage);
-      console.error("Accept invitation error:", errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +80,7 @@ export default function AcceptInvite() {
   return (
     <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
       <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-        Accept Invitation
+        Complete Your Registration
       </h1>
       
       {error && (
@@ -98,9 +101,10 @@ export default function AcceptInvite() {
             value={formData.password}
             onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter a new password"
+            placeholder="Minimum 6 characters"
             required
             minLength={6}
+            autoComplete="new-password"
           />
         </div>
 
@@ -115,9 +119,10 @@ export default function AcceptInvite() {
             value={formData.confirmPassword}
             onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Confirm your password"
+            placeholder="Re-enter your password"
             required
             minLength={6}
+            autoComplete="new-password"
           />
         </div>
 
@@ -134,10 +139,10 @@ export default function AcceptInvite() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Processing...
+              Creating Account...
             </>
           ) : (
-            "Accept Invitation & Set Password"
+            "Complete Registration"
           )}
         </button>
       </form>
