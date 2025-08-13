@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { FiEdit2, FiSave, FiX, FiPlusCircle, FiBriefcase, FiUser } from "react-icons/fi";
 import { useAuth } from "../../../AuthProvider";
+import { useNavigate } from "react-router-dom";
 import API_BASE_URL from "../../../api";
 
 function BusinessInfoForm({ isInSidebar = false }) {
   const { user, token, updateUser } = useAuth();
+  const navigate = useNavigate();
   const [business, setBusiness] = useState(null);
   const [owner, setOwner] = useState(null);
   const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
@@ -97,18 +99,32 @@ function BusinessInfoForm({ isInSidebar = false }) {
           businessForm,
           config
         );
-        setIsCreating(false);
+        
+        // Update user state with business info
+        const updatedUser = { 
+          ...user, 
+          hasBusiness: true,
+          business: response.data 
+        };
+        updateUser(updatedUser);
+        
+        // Show success message
+        setError({ type: 'success', message: 'Business created successfully! Redirecting to dashboard...' });
+        
+        // Redirect to dashboard after 2 seconds
+        setTimeout(() => {
+          navigate('/dashboard', { replace: true });
+        }, 2000);
+        
       } else {
         response = await axios.put(
           `${API_BASE_URL}/businesses/${business.id}`,
           businessForm,
           config
         );
+        setBusiness(response.data);
+        setIsBusinessModalOpen(false);
       }
-
-      setBusiness(response.data);
-      updateUser({ ...user, hasBusiness: true });
-      setIsBusinessModalOpen(false);
     } catch (err) {
       console.error("Business operation failed:", err);
       setError(
@@ -188,7 +204,7 @@ function BusinessInfoForm({ isInSidebar = false }) {
   }
 
   return (
-    <div className={`space-y-6 ${isInSidebar ? 'p-4' :  'pt-25 p-6 md:p-8 md:pt-25  lg:p-10 xl:pt-28 lg:pt-28'}`}>
+    <div className={`space-y-6 ${isInSidebar ? 'p-4' : 'pt-25 p-6 md:p-8 md:pt-25 lg:p-10 xl:pt-28 lg:pt-28'}`}>
       {/* Business Section */}
       {business ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -270,7 +286,24 @@ function BusinessInfoForm({ isInSidebar = false }) {
         width="max-w-2xl"
       >
         <form onSubmit={handleBusinessSubmit} className="space-y-4">
-          {error && <ErrorMessage message={error} />}
+          {error && (
+            <div className={`p-3 rounded-lg text-sm flex items-start ${
+              error.type === 'success' 
+                ? 'bg-green-50 text-green-700' 
+                : 'bg-red-50 text-red-700'
+            }`}>
+              {error.type === 'error' ? (
+                <svg className="h-5 w-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="h-5 w-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              )}
+              <span>{error.message}</span>
+            </div>
+          )}
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
@@ -352,7 +385,14 @@ function BusinessInfoForm({ isInSidebar = false }) {
         width="max-w-md"
       >
         <form onSubmit={handleOwnerSubmit} className="space-y-4">
-          {error && <ErrorMessage message={error} />}
+          {error && (
+            <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm flex items-start">
+              <svg className="h-5 w-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <span>{error.message}</span>
+            </div>
+          )}
           
           <FormInput
             label="Full Name *"
@@ -475,15 +515,6 @@ const FormTextarea = ({ label, name, value, onChange, rows = 3, fullWidth = fals
       rows={rows}
       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
     />
-  </div>
-);
-
-const ErrorMessage = ({ message }) => (
-  <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm flex items-start">
-    <svg className="h-5 w-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-    </svg>
-    <span>{message}</span>
   </div>
 );
 
