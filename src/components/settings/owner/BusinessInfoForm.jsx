@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FiEdit2, FiSave, FiX, FiPlusCircle } from "react-icons/fi";
+import { FiEdit2, FiSave, FiX, FiPlusCircle, FiBriefcase, FiUser } from "react-icons/fi";
 import { useAuth } from "../../../AuthProvider";
 import API_BASE_URL from "../../../api";
 
-function BusinessInfoForm() {
+function BusinessInfoForm({ isInSidebar = false }) {
   const { user, token, updateUser } = useAuth();
   const [business, setBusiness] = useState(null);
   const [owner, setOwner] = useState(null);
@@ -14,7 +14,7 @@ function BusinessInfoForm() {
   const [error, setError] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Initialize form states with all required fields
+  // Form states
   const [businessForm, setBusinessForm] = useState({
     name: "",
     address: "",
@@ -180,69 +180,59 @@ function BusinessInfoForm() {
   };
 
   if (!owner) {
-    return <div className="p-6 text-center">Loading information...</div>;
+    return (
+      <div className={`flex items-center justify-center ${isInSidebar ? 'h-full' : 'min-h-[300px]'}`}>
+        <div className="animate-pulse text-gray-500">Loading information...</div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-20 pt-16 px-4 md:px-8 lg:px-16 ">
+    <div className={`space-y-6 ${isInSidebar ? 'p-4' :  'pt-25 p-6 md:p-8 md:pt-25  lg:p-10 xl:pt-28 lg:pt-28'}`}>
       {/* Business Section */}
       {business ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-800">Business Profile</h2>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 flex justify-between items-center">
+            <div className="flex items-center">
+              <div className="bg-white p-2 rounded-lg shadow-xs mr-3">
+                <FiBriefcase className="text-blue-600 text-lg" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-800">Business Profile</h2>
+            </div>
             <button
               onClick={openBusinessEdit}
-              className="flex items-center text-blue-600 hover:text-blue-800"
+              className="flex items-center text-sm text-blue-600 hover:text-blue-800 bg-white px-3 py-1.5 rounded-lg shadow-xs border border-blue-100"
             >
-              <FiEdit2 className="mr-1" /> Edit
+              <FiEdit2 className="mr-1.5" /> Edit
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Business Name</h3>
-              <p className="mt-1 text-gray-900">{business.name}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Email</h3>
-              <p className="mt-1 text-gray-900">{business.email}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Phone</h3>
-              <p className="mt-1 text-gray-900">{business.phone}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Address</h3>
-              <p className="mt-1 text-gray-900">{business.address}</p>
-            </div>
+          <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+            <InfoField label="Business Name" value={business.name} />
+            <InfoField label="Email" value={business.email} />
+            <InfoField label="Phone" value={business.phone} />
+            <InfoField label="Address" value={business.address} />
             {business.website && (
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Website</h3>
-                <p className="mt-1 text-blue-600 hover:underline">
-                  <a href={business.website.startsWith('http') ? business.website : `https://${business.website}`} target="_blank" rel="noopener noreferrer">
-                    {business.website}
-                  </a>
-                </p>
-              </div>
+              <InfoField label="Website" value={business.website} isLink />
             )}
             <div className="md:col-span-2">
-              <h3 className="text-sm font-medium text-gray-500">Description</h3>
-              <p className="mt-1 text-gray-900">
-                {business.description || "No description provided"}
-              </p>
+              <InfoField label="Description" value={business.description || "No description provided"} isMultiline />
             </div>
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">No Business Profile</h2>
-          <p className="text-gray-600 mb-6">You need to set up your business profile to continue</p>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center">
+          <div className="mx-auto w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+            <FiBriefcase className="text-blue-600 text-2xl" />
+          </div>
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">No Business Profile</h2>
+          <p className="text-gray-600 mb-6">Set up your business profile to unlock all features</p>
           <button
             onClick={() => {
               setIsCreating(true);
               openBusinessEdit();
             }}
-            className="flex items-center justify-center mx-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="flex items-center justify-center mx-auto px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
           >
             <FiPlusCircle className="mr-2" /> Create Business Profile
           </button>
@@ -250,251 +240,273 @@ function BusinessInfoForm() {
       )}
 
       {/* Owner Account Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-800">Owner Account</h2>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 flex justify-between items-center">
+          <div className="flex items-center">
+            <div className="bg-white p-2 rounded-lg shadow-xs mr-3">
+              <FiUser className="text-blue-600 text-lg" />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-800">Owner Account</h2>
+          </div>
           <button
             onClick={openOwnerEdit}
-            className="flex items-center text-blue-600 hover:text-blue-800"
+            className="flex items-center text-sm text-blue-600 hover:text-blue-800 bg-white px-3 py-1.5 rounded-lg shadow-xs border border-blue-100"
           >
-            <FiEdit2 className="mr-1" /> Edit
+            <FiEdit2 className="mr-1.5" /> Edit
           </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">Full Name</h3>
-            <p className="mt-1 text-gray-900">{owner.name}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">Email</h3>
-            <p className="mt-1 text-gray-900">{owner.email}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">Phone</h3>
-            <p className="mt-1 text-gray-900">{owner.phone || "Not provided"}</p>
-          </div>
+        <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+          <InfoField label="Full Name" value={owner.name} />
+          <InfoField label="Email" value={owner.email} />
+          <InfoField label="Phone" value={owner.phone || "Not provided"} />
         </div>
       </div>
 
       {/* Business Form Modal */}
-      {isBusinessModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl">
-            <div className="flex justify-between items-center border-b p-4">
-              <h3 className="text-lg font-semibold">
-                {isCreating ? "Create Business Profile" : "Edit Business Profile"}
-              </h3>
-              <button 
-                onClick={() => setIsBusinessModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleBusinessSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {error && (
-                <div className="md:col-span-2 p-2 bg-red-100 text-red-700 rounded-md text-sm">
-                  {error}
-                </div>
-              )}
-              
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Business Name *
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={businessForm.name}
-                  onChange={handleBusinessChange}
-                  className="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
+      <Modal 
+        isOpen={isBusinessModalOpen} 
+        onClose={() => setIsBusinessModalOpen(false)}
+        title={isCreating ? "Create Business Profile" : "Edit Business Profile"}
+        width="max-w-2xl"
+      >
+        <form onSubmit={handleBusinessSubmit} className="space-y-4">
+          {error && <ErrorMessage message={error} />}
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormInput
+              label="Business Name *"
+              name="name"
+              value={businessForm.name}
+              onChange={handleBusinessChange}
+              required
+            />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={businessForm.email}
-                  onChange={handleBusinessChange}
-                  className="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
+            <FormInput
+              label="Email *"
+              type="email"
+              name="email"
+              value={businessForm.email}
+              onChange={handleBusinessChange}
+              required
+            />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone *
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={businessForm.phone}
-                  onChange={handleBusinessChange}
-                  className="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
+            <FormInput
+              label="Phone *"
+              type="tel"
+              name="phone"
+              value={businessForm.phone}
+              onChange={handleBusinessChange}
+              required
+            />
 
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address *
-                </label>
-                <input
-                  type="text"
-                  name="address"
-                  value={businessForm.address}
-                  onChange={handleBusinessChange}
-                  className="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Website
-                </label>
-                <input
-                  type="url"
-                  name="website"
-                  value={businessForm.website}
-                  onChange={handleBusinessChange}
-                  className="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="https://example.com"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={businessForm.description}
-                  onChange={handleBusinessChange}
-                  rows={3}
-                  className="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div className="md:col-span-2 flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsBusinessModalOpen(false)}
-                  className="px-4 py-2 border rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading.business}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-70 flex items-center justify-center"
-                >
-                  {loading.business ? (
-                    <>
-                      <FiSave className="animate-spin mr-2" />
-                      {isCreating ? "Creating..." : "Saving..."}
-                    </>
-                  ) : isCreating ? "Create Business" : "Save Changes"}
-                </button>
-              </div>
-            </form>
+            <FormInput
+              label="Website"
+              type="url"
+              name="website"
+              value={businessForm.website}
+              onChange={handleBusinessChange}
+              placeholder="https://example.com"
+            />
           </div>
-        </div>
-      )}
+
+          <FormInput
+            label="Address *"
+            type="text"
+            name="address"
+            value={businessForm.address}
+            onChange={handleBusinessChange}
+            required
+            fullWidth
+          />
+
+          <FormTextarea
+            label="Description"
+            name="description"
+            value={businessForm.description}
+            onChange={handleBusinessChange}
+            rows={3}
+          />
+
+          <div className="flex justify-end space-x-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setIsBusinessModalOpen(false)}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <SubmitButton
+              loading={loading.business}
+              text={isCreating ? "Create Business" : "Save Changes"}
+              loadingText={isCreating ? "Creating..." : "Saving..."}
+            />
+          </div>
+        </form>
+      </Modal>
 
       {/* Owner Edit Modal */}
-      {isOwnerModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
-            <div className="flex justify-between items-center border-b p-4">
-              <h3 className="text-lg font-semibold">Edit Owner Profile</h3>
-              <button 
-                onClick={() => setIsOwnerModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiX size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleOwnerSubmit} className="p-6 space-y-4">
-              {error && (
-                <div className="p-2 bg-red-100 text-red-700 rounded-md text-sm">
-                  {error}
-                </div>
-              )}
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={ownerForm.name}
-                  onChange={handleOwnerChange}
-                  className="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
+      <Modal 
+        isOpen={isOwnerModalOpen} 
+        onClose={() => setIsOwnerModalOpen(false)}
+        title="Edit Owner Profile"
+        width="max-w-md"
+      >
+        <form onSubmit={handleOwnerSubmit} className="space-y-4">
+          {error && <ErrorMessage message={error} />}
+          
+          <FormInput
+            label="Full Name *"
+            name="name"
+            value={ownerForm.name}
+            onChange={handleOwnerChange}
+            required
+            fullWidth
+          />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={ownerForm.email}
-                  onChange={handleOwnerChange}
-                  className="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
+          <FormInput
+            label="Email *"
+            type="email"
+            name="email"
+            value={ownerForm.email}
+            onChange={handleOwnerChange}
+            required
+            fullWidth
+          />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={ownerForm.phone}
-                  onChange={handleOwnerChange}
-                  className="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+          <FormInput
+            label="Phone"
+            type="tel"
+            name="phone"
+            value={ownerForm.phone}
+            onChange={handleOwnerChange}
+            fullWidth
+          />
 
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsOwnerModalOpen(false)}
-                  className="px-4 py-2 border rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading.owner}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-70 flex items-center justify-center"
-                >
-                  {loading.owner ? (
-                    <>
-                      <FiSave className="animate-spin mr-2" />
-                      Saving...
-                    </>
-                  ) : "Save Changes"}
-                </button>
-              </div>
-            </form>
+          <div className="flex justify-end space-x-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setIsOwnerModalOpen(false)}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <SubmitButton
+              loading={loading.owner}
+              text="Save Changes"
+              loadingText="Saving..."
+            />
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </div>
   );
 }
+
+// Reusable Components
+const InfoField = ({ label, value, isLink = false, isMultiline = false }) => (
+  <div>
+    <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">{label}</h3>
+    {isLink ? (
+      <a 
+        href={value.startsWith('http') ? value : `https://${value}`} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="text-blue-600 hover:underline break-all"
+      >
+        {value}
+      </a>
+    ) : isMultiline ? (
+      <p className="text-gray-800 whitespace-pre-line">{value}</p>
+    ) : (
+      <p className="text-gray-800">{value || "-"}</p>
+    )}
+  </div>
+);
+
+const Modal = ({ isOpen, onClose, title, children, width = "max-w-md" }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+      <div className={`bg-white rounded-xl shadow-2xl w-full ${width} max-h-[90vh] overflow-y-auto`}>
+        <div className="sticky top-0 bg-white z-10 flex justify-between items-center border-b p-4">
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <button 
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500 rounded-full p-1 hover:bg-gray-100"
+          >
+            <FiX size={20} />
+          </button>
+        </div>
+        <div className="p-6">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FormInput = ({ label, type = "text", name, value, onChange, placeholder = "", required = false, fullWidth = false }) => (
+  <div className={fullWidth ? "col-span-2" : ""}>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      {label}
+    </label>
+    <input
+      type={type}
+      name={name}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      required={required}
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
+    />
+  </div>
+);
+
+const FormTextarea = ({ label, name, value, onChange, rows = 3, fullWidth = false }) => (
+  <div className={fullWidth ? "col-span-2" : ""}>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      {label}
+    </label>
+    <textarea
+      name={name}
+      value={value}
+      onChange={onChange}
+      rows={rows}
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
+    />
+  </div>
+);
+
+const ErrorMessage = ({ message }) => (
+  <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm flex items-start">
+    <svg className="h-5 w-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+    </svg>
+    <span>{message}</span>
+  </div>
+);
+
+const SubmitButton = ({ loading, text, loadingText }) => (
+  <button
+    type="submit"
+    disabled={loading}
+    className={`px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-70 transition-all shadow-md hover:shadow-lg flex items-center justify-center min-w-[120px] ${
+      loading ? "cursor-not-allowed" : ""
+    }`}
+  >
+    {loading ? (
+      <>
+        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        {loadingText}
+      </>
+    ) : (
+      text
+    )}
+  </button>
+);
 
 export default BusinessInfoForm;
