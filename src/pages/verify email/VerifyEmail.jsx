@@ -43,18 +43,14 @@ const VerifyEmail = () => {
         manualLogin(res.data.user, res.data.token);
 
         setTimeout(() => {
-          const { role, hasBusiness } = res.data.user;
-
-          if (role === 'owner' && !hasBusiness) {
-            navigate('/settings');
-          } else if (role === 'owner') {
-            navigate('/dashboard');
-          } else if (role === 'manager') {
-            navigate('/dashboard');
-          } else {
-            navigate('/');
-          }
-        }, 1500);
+          const { role } = res.data.user;
+  
+  if (role === 'owner') {
+    navigate('/settings'); 
+  } else {
+    navigate('/'); 
+  }
+}, 1500);  
       } else {
         setMessage({ text: 'Verification succeeded but login info missing.', isError: true });
       }
