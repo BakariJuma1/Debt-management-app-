@@ -23,6 +23,8 @@ export default function SignUp() {
 
     try {
       // Send signup data to your API
+      console.log("Signup URL being called:", `${API_BASE_URL}/register`);
+
       const response = await axios.post(`${API_BASE_URL}/register`, {
         name: `${firstName} ${lastName}`,
         email: email.trim(),
