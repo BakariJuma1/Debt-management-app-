@@ -4,6 +4,8 @@ import { FiEdit2, FiSave, FiX, FiPlusCircle, FiBriefcase, FiUser } from "react-i
 import { useAuth } from "../../../AuthProvider";
 import { useNavigate } from "react-router-dom";
 import API_BASE_URL from "../../../api";
+import { usePostSubmission } from "../../../hooks/usePostSubmission";
+
 
 function BusinessInfoForm({ isInSidebar = false }) {
   const { user, token, updateUser } = useAuth();
@@ -15,6 +17,7 @@ function BusinessInfoForm({ isInSidebar = false }) {
   const [loading, setLoading] = useState({ business: false, owner: false });
   const [error, setError] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
+  const { handleBusinessCreationSuccess } = usePostSubmission();
 
   // Form states
   const [businessForm, setBusinessForm] = useState({
@@ -80,61 +83,28 @@ function BusinessInfoForm({ isInSidebar = false }) {
   }, [token]);
 
   const handleBusinessSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(prev => ({ ...prev, business: true }));
-    setError(null);
+  e.preventDefault();
+  setLoading(prev => ({ ...prev, business: true }));
+  setError(null);
 
-    try {
-      const config = { 
-        headers: { 
-          Authorization: `Bearer ${token}`, 
-          'Content-Type': 'application/json' 
-        } 
-      };
+  try {
+    console.log('Submitting business form...');
+    const response = await axios.post(`${API_BASE_URL}/businesses`, businessForm, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    console.log('Business created:', response.data);
 
-      let response;
-      if (isCreating) {
-        response = await axios.post(
-          `${API_BASE_URL}/businesses`,
-          businessForm,
-          config
-        );
-        
-        // Update user state with business info
-        const updatedUser = { 
-          ...user, 
-          hasBusiness: true,
-          business: response.data 
-        };
-        updateUser(updatedUser);
-        
-        // Show success message
-        setError({ type: 'success', message: 'Business created successfully! Redirecting to dashboard...' });
-        
-        // Redirect to dashboard after 2 seconds
-        setTimeout(() => {
-          navigate('/dashboard', { replace: true });
-        }, 2000);
-        
-      } else {
-        response = await axios.put(
-          `${API_BASE_URL}/businesses/${business.id}`,
-          businessForm,
-          config
-        );
-        setBusiness(response.data);
-        setIsBusinessModalOpen(false);
-      }
-    } catch (err) {
-      console.error("Business operation failed:", err);
-      setError(
-        err.response?.data?.message || 
-        (isCreating ? "Failed to create business" : "Failed to update business")
-      );
-    } finally {
-      setLoading(prev => ({ ...prev, business: false }));
-    }
-  };
+    console.log('Calling handleBusinessCreationSuccess...');
+    await handleBusinessCreationSuccess(response.data);
+    
+    console.log('Business creation flow completed');
+  } catch (err) {
+    console.error('Business creation failed:', err);
+    setError(err.response?.data?.message || "Failed to create business");
+  } finally {
+    setLoading(prev => ({ ...prev, business: false }));
+  }
+};
 
   const handleOwnerSubmit = async (e) => {
     e.preventDefault();

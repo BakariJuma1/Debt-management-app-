@@ -82,19 +82,24 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Update user with business awareness
-  const updateUser = (updatedData) => {
+const updateUser = async (updatedData) => {
+   console.log('Updating user with:', updatedData);
+  return new Promise(resolve => {
     setAuthState(prev => {
       const updatedUser = {
         ...prev.user,
         ...updatedData,
         hasBusiness: updatedData.role === 'owner'
-          ? updatedData.owned_businesses?.length > 0 || prev.user?.hasBusiness
-          : !!updatedData.business_id || prev.user?.hasBusiness
+          ? updatedData.owned_businesses?.length > 0
+          : !!updatedData.business_id
       };
+      
       localStorage.setItem("user", JSON.stringify(updatedUser));
+      resolve(updatedUser);
       return { ...prev, user: updatedUser };
     });
-  };
+  });
+};
 
   // Specialized business update
   const updateBusiness = (businessData) => {
