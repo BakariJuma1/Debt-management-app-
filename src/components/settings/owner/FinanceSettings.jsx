@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import API_BASE_URL  from '../../../api';
+import API_BASE_URL from '../../../api';
 import axios from 'axios';
-
 
 export default function FinanceSettings() {
   const { businessId } = useParams();
@@ -13,17 +12,16 @@ export default function FinanceSettings() {
   const [currencies, setCurrencies] = useState([]);
   const [formErrors, setFormErrors] = useState({});
 
+  // Ensure we only fetch if businessId is defined
   useEffect(() => {
+    if (!businessId) return;
     fetchAllData();
   }, [businessId]);
 
   const fetchAllData = async () => {
     try {
       setLoading(true);
-      await Promise.all([
-        fetchSettings(),
-        fetchCurrencies()
-      ]);
+      await Promise.all([fetchSettings(), fetchCurrencies()]);
     } catch (error) {
       toast.error('Failed to load finance settings');
       console.error('Error loading data:', error);
@@ -33,22 +31,26 @@ export default function FinanceSettings() {
   };
 
   const fetchSettings = async () => {
+    if (!businessId) return;
+
     try {
-      const response = await axios.get(`${API_BASE_URL}/finance/settings/${businessId}`);
+      const response = await axios.get(`${API_BASE_URL}/settings/${businessId}`);
       setSettings(response.data);
     } catch (error) {
       if (error.response?.status === 404) {
-        // Create default settings if not found
         await createDefaultSettings();
       } else {
-        throw error;
+        toast.error('Failed to fetch finance settings');
+        console.error('Error fetching settings:', error);
       }
     }
   };
 
   const createDefaultSettings = async () => {
+    if (!businessId) return;
+
     try {
-      const response = await axios.post(`${API_BASE_URL}/finance/settings/${businessId}`, {
+      const response = await axios.post(`${API_BASE_URL}/settings/${businessId}`, {
         default_currency: 'USD',
         payment_due_day: 1,
         grace_period_days: 5,
@@ -58,9 +60,10 @@ export default function FinanceSettings() {
         reminder_before_due: true,
         reminder_before_days: 3,
         reminder_after_due: true,
-        reminder_after_days: 1
+        reminder_after_days: 1,
       });
       setSettings(response.data);
+      toast.success('Default settings created');
     } catch (error) {
       toast.error('Failed to create default settings');
       console.error('Error creating settings:', error);
@@ -69,8 +72,7 @@ export default function FinanceSettings() {
 
   const fetchCurrencies = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/finance/currencies`);
-      // Handle both array and object response formats
+      const response = await axios.get(`${API_BASE_URL}/currencies`);
       setCurrencies(Array.isArray(response.data) ? response.data : response.data.currencies);
     } catch (error) {
       toast.error('Failed to load currencies');
@@ -80,58 +82,39 @@ export default function FinanceSettings() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    const newValue = type === 'checkbox' ? checked : 
-                    type === 'number' ? parseFloat(value) : value;
-    
+    const newValue = type === 'checkbox' ? checked : type === 'number' ? parseFloat(value) : value;
+
     setSettings(prev => ({
       ...prev,
-      [name]: newValue
+      [name]: newValue,
     }));
 
-    // Clear error when field is changed
     setFormErrors(prev => ({ ...prev, [name]: null }));
   };
 
   const validateForm = () => {
     const errors = {};
-    
-    if (!settings.default_currency) {
-      errors.default_currency = 'Currency is required';
-    }
-    
-    if (settings.payment_due_day < 1 || settings.payment_due_day > 31) {
-      errors.payment_due_day = 'Must be between 1-31';
-    }
-    
-    if (settings.grace_period_days < 0 || settings.grace_period_days > 30) {
-      errors.grace_period_days = 'Must be between 0-30';
-    }
-    
-    if (settings.late_fee_value < 0) {
-      errors.late_fee_value = 'Must be positive';
-    }
-    
+
+    if (!settings.default_currency) errors.default_currency = 'Currency is required';
+    if (settings.payment_due_day < 1 || settings.payment_due_day > 31) errors.payment_due_day = 'Must be between 1-31';
+    if (settings.grace_period_days < 0 || settings.grace_period_days > 30) errors.grace_period_days = 'Must be between 0-30';
+    if (settings.late_fee_value < 0) errors.late_fee_value = 'Must be positive';
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      toast.error('Please fix the form errors');
-      return;
-    }
+    if (!validateForm()) return toast.error('Please fix the form errors');
 
     try {
-      await axios.put(`${API_BASE_URL}/finance/settings/${businessId}`, settings);
+      await axios.put(`${API_BASE_URL}/settings/${businessId}`, settings);
       toast.success('Settings updated successfully');
-      
-      // Refresh data to ensure we have latest from server
       await fetchSettings();
     } catch (error) {
-      console.error('Error updating settings:', error);
       toast.error(error.response?.data?.message || 'Failed to update settings');
+      console.error('Error updating settings:', error);
     }
   };
 
@@ -147,16 +130,12 @@ export default function FinanceSettings() {
     return (
       <div className="text-center py-10">
         <p className="text-red-500">Failed to load finance settings</p>
-        <button 
-          onClick={fetchAllData}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
+        <button onClick={fetchAllData} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
           Retry
         </button>
       </div>
     );
   }
-
   return (
     <div className="max-w-4xl mx-auto p-4">
       <h2 className="text-2xl font-semibold mb-6">Finance Settings</h2>
