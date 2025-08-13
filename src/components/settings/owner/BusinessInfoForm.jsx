@@ -184,7 +184,7 @@ function BusinessInfoForm() {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-20 pt-16 px-4 md:px-8 lg:px-16 ">
       {/* Business Section */}
       {business ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

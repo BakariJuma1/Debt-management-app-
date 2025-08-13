@@ -40,21 +40,25 @@ const VerifyEmail = () => {
       if (res.data.token && res.data.user) {
         setMessage({ text: 'Email verified! Logging you in...', isError: false });
 
-        manualLogin(res.data.user, res.data.token);
-
-        setTimeout(() => {
-          const { role } = res.data.user;
-  
-  if (role === 'owner') {
-    navigate('/settings'); 
-  } else {
-    navigate('/'); 
-  }
-}, 1500);  
+        // Critical change: await the manualLogin and use its return value
+        const loggedInUser = await manualLogin(res.data.user, res.data.token);
+        
+        console.log('Verification successful, user:', loggedInUser); // Debug log
+        
+        // Immediate redirect based on role
+        if (loggedInUser.role === 'owner') {
+          navigate('/settings', { replace: true }); // Force redirect to settings
+        } else {
+          navigate('/', { replace: true }); // Fallback for other roles
+        }
       } else {
-        setMessage({ text: 'Verification succeeded but login info missing.', isError: true });
+        setMessage({ 
+          text: 'Verification succeeded but login info missing.', 
+          isError: true 
+        });
       }
     } catch (error) {
+      console.error('Verification error:', error); // Debug log
       setMessage({
         text: error.response?.data?.message || 'Verification failed. Please try again.',
         isError: true,
