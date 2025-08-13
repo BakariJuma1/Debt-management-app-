@@ -107,9 +107,11 @@ const Index = () => {
                 The complete solution for Kenyan traders to manage customer credit - replace your paper books with automated tracking, reminders, and insights.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 mb-10">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2">
-                  Try Free PaySync <ArrowRight className="w-5 h-5" />
-                </button>
+                  <a href="/signup" className="block">
+                     <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                       Try Free PaySync <ArrowRight className="w-5 h-5" />
+                      </button>
+                  </a>
               </div>
               <div className="flex flex-wrap gap-4 items-center">
                 {["No paperwork", "Works offline", "MPESA integrated"].map((text, i) => (
@@ -351,9 +353,11 @@ const Index = () => {
           <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
             Join thousands of Kenyan businesses getting paid faster with our system.
           </p>
-          <button className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-4 px-10 rounded-lg text-lg transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 mx-auto">
+          <a href="/signup" className="block mb-6">
+             <button className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-4 px-10 rounded-lg text-lg transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 mx-auto">
             Ready to start today <ArrowRight className="w-5 h-5" />
-          </button>
+             </button>
+          </a>   
           <p className="text-gray-400 text-sm mt-6">
             <Check className="w-4 h-4 inline mr-2" /> No setup fees • Cancel anytime
           </p>
