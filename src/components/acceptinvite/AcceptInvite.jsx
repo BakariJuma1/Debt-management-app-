@@ -58,12 +58,8 @@ export default function AcceptInvite() {
         password: formData.password,
       });
 
-      const { access_token, user } = inviteResponse.data;
-      
-      // 2. Automatically log in the user (no separate login call needed)
-      // Since the backend already verified everything
-      login(user, access_token);
-      
+      login(inviteResponse.data.user, inviteResponse.data.access_token);
+
       // 3. Redirect to dashboard
       navigate("/dashboard");
 
