@@ -91,6 +91,7 @@ const VerifyEmail = () => {
     setLoading(true);
     setMessage({ text: '', isError: false });
     setResendCooldown(30); // 30 second cooldown
+    setOtp(Array(6).fill('')); // Clear the OTP input fields
 
     try {
       await axios.post(`${API_BASE_URL}/resend-verification`, { email });
