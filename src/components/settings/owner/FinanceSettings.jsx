@@ -33,7 +33,7 @@ export default function FinanceSettings() {
         
         // 2. Get the finance settings for this business
         const settingsRes = await axios.get(
-          `${API_BASE_URL}/finance/settings/${businessRes.data.id}`,
+          `${API_BASE_URL}/settings/${businessRes.data.id}`,
           {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -44,7 +44,7 @@ export default function FinanceSettings() {
         setSettings(settingsRes.data);
         
         // 3. Get available currencies
-        const currenciesRes = await axios.get(`${API_BASE_URL}/finance/currencies`);
+        const currenciesRes = await axios.get(`${API_BASE_URL}/currencies`);
         setCurrencies(currenciesRes.data.currencies || currenciesRes.data);
         
       } catch (error) {
@@ -69,7 +69,7 @@ export default function FinanceSettings() {
             };
             
             const createRes = await axios.post(
-              `${API_BASE_URL}/finance/settings/${currentBusiness?.id}`,
+              `${API_BASE_URL}/settings/${currentBusiness?.id}`,
               defaultSettings,
               {
                 headers: {
@@ -154,7 +154,7 @@ export default function FinanceSettings() {
       setLoading(true);
       
       const response = await axios.put(
-        `${API_BASE_URL}/finance/settings/${currentBusiness.id}`,
+        `${API_BASE_URL}/settings/${currentBusiness.id}`,
         settings,
         {
           headers: {
