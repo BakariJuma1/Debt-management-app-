@@ -91,7 +91,8 @@ const Index = () => {
   }, [handleScroll]);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white ">
+      <div className="h-8"></div>
       {/* Hero Section */}
       <section className="relative bg-white py-16 md:py-24 px-4">
         <div className="max-w-6xl mx-auto">

@@ -45,7 +45,7 @@ const Navbar = () => {
   return (
     <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? "bg-white/95 backdrop-blur-sm shadow-sm py-2" : "bg-white/95 backdrop-blur-sm py-3"}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-14">
           {/* Logo with responsive sizing */}
           <div className="flex-shrink-0 flex items-center">
             <Link to="/" className="flex items-center">
