@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import API_BASE_URL from "../../../api";
 import { usePostSubmission } from "../../../hooks/usePostSubmission";
 
-
 function BusinessInfoForm({ isInSidebar = false }) {
   const { user, token, updateUser } = useAuth();
   const navigate = useNavigate();
@@ -83,28 +82,48 @@ function BusinessInfoForm({ isInSidebar = false }) {
   }, [token]);
 
   const handleBusinessSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(prev => ({ ...prev, business: true }));
-  setError(null);
+    e.preventDefault();
+    setLoading(prev => ({ ...prev, business: true }));
+    setError(null);
 
-  try {
-    console.log('Submitting business form...');
-    const response = await axios.post(`${API_BASE_URL}/businesses`, businessForm, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    console.log('Business created:', response.data);
+    try {
+      console.log('Submitting business form...', businessForm);
+      
+      // Trim whitespace from all fields as backend does
+      const cleanedForm = Object.keys(businessForm).reduce((acc, key) => {
+        acc[key] = typeof businessForm[key] === 'string' ? businessForm[key].trim() : businessForm[key];
+        return acc;
+      }, {});
 
-    console.log('Calling handleBusinessCreationSuccess...');
-    await handleBusinessCreationSuccess(response.data);
-    
-    console.log('Business creation flow completed');
-  } catch (err) {
-    console.error('Business creation failed:', err);
-    setError(err.response?.data?.message || "Failed to create business");
-  } finally {
-    setLoading(prev => ({ ...prev, business: false }));
-  }
-};
+      const response = await axios.post(`${API_BASE_URL}/businesses`, cleanedForm, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Business created:', response.data);
+      await handleBusinessCreationSuccess(response.data);
+      setBusiness(response.data.business);
+      setIsBusinessModalOpen(false);
+      setIsCreating(false);
+      
+    } catch (err) {
+      console.error('Business creation failed:', err);
+      
+      // Show detailed validation errors from backend
+      if (err.response?.data?.errors) {
+        const errorMessages = Object.entries(err.response.data.errors)
+          .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+          .join('; ');
+        setError({type: 'error', message: errorMessages});
+      } else {
+        setError({type: 'error', message: err.response?.data?.message || "Failed to create business"});
+      }
+    } finally {
+      setLoading(prev => ({ ...prev, business: false }));
+    }
+  };
 
   const handleOwnerSubmit = async (e) => {
     e.preventDefault();
@@ -128,7 +147,7 @@ function BusinessInfoForm({ isInSidebar = false }) {
       setIsOwnerModalOpen(false);
     } catch (err) {
       console.error("Owner update failed:", err);
-      setError(err.response?.data?.message || "Failed to update profile");
+      setError({type: 'error', message: err.response?.data?.message || "Failed to update profile"});
     } finally {
       setLoading(prev => ({ ...prev, owner: false }));
     }
