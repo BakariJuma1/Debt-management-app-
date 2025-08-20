@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FiPlus, FiDollarSign, FiCalendar, FiUser, FiPhone, FiFileText } from "react-icons/fi";
+import { FiPlus, FiDollarSign, FiCalendar, FiUser, FiPhone, FiFileText, FiTag } from "react-icons/fi";
 import Layout from "../layout/Layout";
 import API_BASE_URL from "../../api";
 import { useAuth } from "../../AuthProvider";
-
 
 function AddDebt() {
   const { user } = useAuth();
@@ -21,6 +20,7 @@ function AddDebt() {
         name: "",
         quantity: 1,
         price: 0,
+        category: "", // Add category field
       },
     ],
     amountPaid: 0,
@@ -103,7 +103,7 @@ function AddDebt() {
   const addItem = () => {
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, { name: "", quantity: 1, price: 0 }],
+      items: [...prev.items, { name: "", quantity: 1, price: 0, category: "" }],
     }));
   };
 
@@ -150,6 +150,11 @@ function AddDebt() {
       return false;
     }
 
+    if (formData.items.some(item => !item.category.trim())) {
+      setError("All items must have a category");
+      return false;
+    }
+
     if (formData.items.some(item => isNaN(item.quantity) || item.quantity <= 0)) {
       setError("All items must have a valid quantity");
       return false;
@@ -184,12 +189,13 @@ function AddDebt() {
         items: formData.items.map(item => ({
           name: item.name,
           quantity: parseFloat(item.quantity),
-          price: parseFloat(item.price)
+          price: parseFloat(item.price),
+          category: item.category // Include category in payload
         })),
         due_date: formData.dueDate || null,
         amount_paid: amountPaid,
         total: total,
-        balance: balance, // Include balance in payload
+        balance: balance,
         receipt: formData.receipt || ""
       };
 
@@ -222,7 +228,7 @@ function AddDebt() {
 
   return (
     <Layout>
-      <div className="container mx-auto p-4 max-w-4xl">
+      <div className="container mx-auto p-4 max-w-6xl">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">Add New Debt</h1>
 
         {error && (
@@ -342,7 +348,7 @@ function AddDebt() {
                 key={index}
                 className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-4 items-end"
               >
-                <div className="md:col-span-5">
+                <div className="md:col-span-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Item Name *
                   </label>
@@ -369,7 +375,7 @@ function AddDebt() {
                     required
                   />
                 </div>
-                <div className="md:col-span-3">
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Unit Price *
                   </label>
@@ -389,7 +395,25 @@ function AddDebt() {
                     />
                   </div>
                 </div>
-                <div className="md:col-span-2 flex justify-end">
+                <div className="md:col-span-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category *
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FiTag className="text-gray-400" />
+                    </div>
+                    <input
+                      name="category"
+                      value={item.category}
+                      onChange={(e) => handleItemChange(index, e)}
+                      placeholder="e.g. Construction"
+                      className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="md:col-span-1 flex justify-end">
                   {formData.items.length > 1 && (
                     <button
                       type="button"
