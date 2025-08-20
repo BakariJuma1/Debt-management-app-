@@ -34,6 +34,23 @@ function BusinessInfoForm({ isInSidebar = false }) {
     phone: user?.phone || "",
   });
 
+  // Validate business form
+  const validateBusinessForm = (formData) => {
+    const errors = {};
+    
+    if (!formData.name?.trim()) errors.name = "Business name is required";
+    if (!formData.email?.trim()) errors.email = "Email is required";
+    if (!formData.phone?.trim()) errors.phone = "Phone is required";
+    if (!formData.address?.trim()) errors.address = "Address is required";
+    
+    // Email validation
+    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = "Email is invalid";
+    }
+    
+    return errors;
+  };
+
   const fetchBusinessData = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/business/my`, {
@@ -41,16 +58,27 @@ function BusinessInfoForm({ isInSidebar = false }) {
       });
       
       if (response.data) {
-        setBusiness(response.data);
+        // Only store the fields we need for display
+        const businessData = {
+          id: response.data.id,
+          name: response.data.name,
+          address: response.data.address,
+          phone: response.data.phone,
+          email: response.data.email,
+          website: response.data.website,
+          description: response.data.description,
+        };
+        
+        setBusiness(businessData);
 
-      setBusinessForm({
-        name: response.data.name || "",
-        address: response.data.address || "",
-        phone: response.data.phone || "",
-        email: response.data.email || "",
-        website: response.data.website || "",
-        description: response.data.description || "",
-      });
+        setBusinessForm({
+          name: response.data.name || "",
+          address: response.data.address || "",
+          phone: response.data.phone || "",
+          email: response.data.email || "",
+          website: response.data.website || "",
+          description: response.data.description || "",
+        });
 
         setIsCreating(false);
       } else {
@@ -95,16 +123,36 @@ function BusinessInfoForm({ isInSidebar = false }) {
     setLoading(prev => ({ ...prev, business: true }));
     setError(null);
 
+    // Validate form before submission
+    const formErrors = validateBusinessForm(businessForm);
+    if (Object.keys(formErrors).length > 0) {
+      setError({type: 'error', message: Object.values(formErrors).join(', ')});
+      setLoading(prev => ({ ...prev, business: false }));
+      return;
+    }
+
     try {
       console.log('Submitting business form...', businessForm);
       
-      // Trim whitespace from all fields as backend does
+      // Trim whitespace from all fields
       const cleanedForm = Object.keys(businessForm).reduce((acc, key) => {
         acc[key] = typeof businessForm[key] === 'string' ? businessForm[key].trim() : businessForm[key];
         return acc;
       }, {});
 
-      const response = await axios.post(`${API_BASE_URL}/businesses`, cleanedForm, {
+      // Create a payload with only the fields the backend expects
+      const backendPayload = {
+        name: cleanedForm.name,
+        address: cleanedForm.address,
+        phone: cleanedForm.phone,
+        email: cleanedForm.email,
+        website: cleanedForm.website || null,
+        description: cleanedForm.description || null,
+      };
+
+      console.log('Sending to backend:', backendPayload);
+      
+      const response = await axios.post(`${API_BASE_URL}/businesses`, backendPayload, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -113,7 +161,21 @@ function BusinessInfoForm({ isInSidebar = false }) {
       
       console.log('Business created:', response.data);
       await handleBusinessCreationSuccess(response.data);
-      setBusiness(response.data.business);
+      
+      // Update business state with only the necessary fields
+      if (response.data.business) {
+        const businessData = {
+          id: response.data.business.id,
+          name: response.data.business.name,
+          address: response.data.business.address,
+          phone: response.data.business.phone,
+          email: response.data.business.email,
+          website: response.data.business.website,
+          description: response.data.business.description,
+        };
+        setBusiness(businessData);
+      }
+      
       setIsBusinessModalOpen(false);
       setIsCreating(false);
       
@@ -140,9 +202,16 @@ function BusinessInfoForm({ isInSidebar = false }) {
     setError(null);
 
     try {
+      // Create payload with only the fields the backend expects for user update
+      const ownerPayload = {
+        name: ownerForm.name.trim(),
+        email: ownerForm.email.trim(),
+        phone: ownerForm.phone?.trim() || null,
+      };
+
       const response = await axios.put(
         `${API_BASE_URL}/me`,
-        ownerForm,
+        ownerPayload,
         { 
           headers: { 
             Authorization: `Bearer ${token}`, 
@@ -534,7 +603,8 @@ const SubmitButton = ({ loading, text, loadingText }) => (
       </>
     ) : (
       text
-    )}
+    )
+    }
   </button>
 );
 
