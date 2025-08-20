@@ -1,13 +1,13 @@
-// MobileTopBar.jsx
 import React, { useState } from "react";
 import { FiMenu, FiRefreshCw, FiX } from "react-icons/fi";
 import { Link } from "react-router-dom";
 
 const defaultMenuItems = [
   { path: "/dashboard", label: "Dashboard" },
-  { path: "/settings", label: "Settings" },
-  {path: "/debts",label:"All Debts"},
-  {path: "/add-debt",label:"Add New Debt"}
+  { path: "/debts", label: "All Debts" },
+  { path: "/customers", label: "Customers" },
+  { path: "/add-debt", label: "Add New Debt" },
+  { path: "/settings", label: "Settings" }
 ];
 
 export default function MobileTopBar({ 

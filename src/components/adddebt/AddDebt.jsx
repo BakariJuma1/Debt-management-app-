@@ -20,7 +20,7 @@ function AddDebt() {
         name: "",
         quantity: 1,
         price: 0,
-        category: "", // Add category field
+        category: "", 
       },
     ],
     amountPaid: 0,

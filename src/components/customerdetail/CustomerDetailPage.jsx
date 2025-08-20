@@ -1,30 +1,42 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  FaMoneyBillAlt,
-  FaFilePdf,
-  FaEnvelope,
-  FaListUl,
-  FaHistory,
-  FaTrash,
-  FaArrowLeft,
-  FaPlus,
-  FaSave,
+  // FaMoneyBillAlt,
+  // FaFilePdf,
+  // FaEnvelope,
+  // FaListUl,
+  // FaHistory,
+  // FaTrash,
+  // FaArrowLeft,
+  // FaPlus,
+  // FaSave,
+  // FaEdit,
+  // FiMoreVertical,
+  // // FiChevronDown,
+  // // FiChevronUp,
+  // FiDollarSign,
+  // FiShoppingCart,
+  // FiUser,
+  // FiCreditCard,
+  // FiCheckCircle
 } from "react-icons/fa";
 import Layout from "../layout/Layout";
+import API_BASE_URL from "../../api";
+import { useAuth } from "../../AuthProvider"; 
 
 function CustomerDetailPage() {
   const { customerId } = useParams();
   const navigate = useNavigate();
+  const { user, token } = useAuth();
 
   const [customer, setCustomer] = useState(null);
   const [editedItems, setEditedItems] = useState([]);
-  const [itemHistory, setItemHistory] = useState([]);
+  const [changeLogs, setChangeLogs] = useState([]);
   const [payments, setPayments] = useState([]);
   const [newPayment, setNewPayment] = useState({
     amount: "",
     method: "",
-    receivedBy: "",
+    received_by: "",
   });
   const [newItem, setNewItem] = useState({
     name: "",
@@ -34,49 +46,103 @@ function CustomerDetailPage() {
   });
   const [activeTab, setActiveTab] = useState("items");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [expandedSections, setExpandedSections] = useState({
+    addItem: false,
+    addPayment: false
+  });
 
   useEffect(() => {
     async function fetchCustomerData() {
       try {
         setIsLoading(true);
-        const res = await fetch("https://debt-backend-lj7p.onrender.com/api/debts");
-        const allCustomers = await res.json();
-        const customerData = allCustomers.find((c) => c.id === customerId);
-        if (!customerData) throw new Error("Customer not found");
+        setError(null);
+        
+        const res = await fetch(`${API_BASE_URL}/debts/${customerId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!res.ok) {
+          if (res.status === 403) {
+            throw new Error("Access denied. You don't have permission to view this customer.");
+          }
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
+        const customerData = await res.json();
+        
+        if (user.role === 'salesperson' && customerData.created_by !== user.id) {
+          throw new Error("Access denied. You can only view your own customers.");
+        }
 
         setCustomer(customerData);
         setEditedItems(customerData.items || []);
         setPayments(customerData.payments || []);
+        
+        await fetchChangeLogs();
+        
       } catch (error) {
         console.error("Error fetching customer data:", error);
+        setError(error.message);
       } finally {
         setIsLoading(false);
       }
     }
 
-    fetchCustomerData();
-  }, [customerId]);
+    if (user && token) {
+      fetchCustomerData();
+    }
+  }, [customerId, user, token]);
 
-  const formatCurrency = (amount) => `Ksh ${Number(amount || 0).toLocaleString()}`;
+  const fetchChangeLogs = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/changelogs`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (res.ok) {
+        const logs = await res.json();
+        const debtLogs = logs.filter(log => 
+          log.table_name === 'Debt' && log.record_id == customerId ||
+          log.table_name === 'Payment' && log.new_values?.debt_id == customerId
+        );
+        setChangeLogs(debtLogs);
+      }
+    } catch (error) {
+      console.error("Error fetching change logs:", error);
+    }
+  };
 
-  const balance = customer ? customer.total - (customer.amountPaid || 0) : 0;
+  const formatCurrency = (amount) => {
+    try {
+      return new Intl.NumberFormat("en-KE", {
+        style: "currency",
+        currency: "KES",
+        minimumFractionDigits: 0,
+      })
+        .format(amount || 0)
+        .replace("KES", "Ksh");
+    } catch {
+      return `Ksh ${amount || 0}`;
+    }
+  };
+
+  const balance = customer ? (customer.balance || customer.total - (customer.amount_paid || 0)) : 0;
 
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
     const updated = [...editedItems];
-    const prev = updated[index][name];
     updated[index][name] = value;
     setEditedItems(updated);
-    if (prev !== value) {
-      addItemHistory(`Edited "${name}" from "${prev}" to "${value}"`);
-    }
   };
 
   const handleRemoveItem = (index) => {
-    const removed = editedItems[index];
     const updated = editedItems.filter((_, i) => i !== index);
     setEditedItems(updated);
-    addItemHistory(`Removed "${removed.name}" × ${removed.quantity}`);
   };
 
   const handleNewItemChange = (e) => {
@@ -84,7 +150,7 @@ function CustomerDetailPage() {
     setNewItem({ ...newItem, [name]: value });
   };
 
-  const handleAddItem = async () => {
+  const handleAddItem = () => {
     if (!newItem.name || !newItem.quantity || !newItem.price) {
       alert("Please fill in all item fields");
       return;
@@ -93,43 +159,76 @@ function CustomerDetailPage() {
     const updatedItems = [...editedItems, newItem];
     setEditedItems(updatedItems);
     setNewItem({ name: "", quantity: "", price: "", category: "" });
-    addItemHistory(`Added new item "${newItem.name}" × ${newItem.quantity}`);
-  };
-
-  const addItemHistory = (msg) => {
-    const time = new Date().toLocaleString();
-    setItemHistory((prev) => [`[${time}] ${msg}`, ...prev]);
+    setExpandedSections({...expandedSections, addItem: false});
   };
 
   const handleInputChange = (e) => {
     setNewPayment({ ...newPayment, [e.target.name]: e.target.value });
   };
 
-  const handleAddPayment = () => {
-    if (!newPayment.amount || !newPayment.method || !newPayment.receivedBy) {
+  const handleAddPayment = async () => {
+    if (!newPayment.amount || !newPayment.method || !newPayment.received_by) {
       alert("Please fill in all payment fields");
       return;
     }
 
-    const today = new Date().toISOString().split("T")[0];
-    const payment = { ...newPayment, date: today };
+    try {
+      const paymentData = {
+        debt_id: parseInt(customerId),
+        amount: parseFloat(newPayment.amount),
+        method: newPayment.method,
+        received_by: newPayment.received_by
+      };
 
-    setPayments([payment, ...payments]);
-    setNewPayment({ amount: "", method: "", receivedBy: "" });
+      const res = await fetch(`${API_BASE_URL}/payments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(paymentData),
+      });
+
+      if (!res.ok) throw new Error("Failed to add payment");
+
+      const newPaymentData = await res.json();
+      setPayments([newPaymentData, ...payments]);
+      setNewPayment({ amount: "", method: "", received_by: "" });
+      setExpandedSections({...expandedSections, addPayment: false});
+      
+      const customerRes = await fetch(`${API_BASE_URL}/debts/${customerId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (customerRes.ok) {
+        const updatedCustomer = await customerRes.json();
+        setCustomer(updatedCustomer);
+      }
+      
+    } catch (error) {
+      console.error("Payment error:", error);
+      alert("Error adding payment. Please try again.");
+    }
   };
 
   const handleSaveChanges = async () => {
     try {
-      const res = await fetch(`https://your-backend-url/api/debts/${customerId}`, {
+      const res = await fetch(`${API_BASE_URL}/debts/${customerId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ items: editedItems }),
       });
 
       if (!res.ok) throw new Error("Failed to save changes");
+      
       const updatedCustomer = await res.json();
       setCustomer(updatedCustomer);
       alert("Changes saved successfully!");
+      
     } catch (error) {
       console.error("Save error:", error);
       alert("Error saving changes. Please try again.");
@@ -147,16 +246,16 @@ function CustomerDetailPage() {
     const paymentList = payments
       .map(
         (p) =>
-          `- ${p.date}: Ksh${p.amount} via ${p.method}, received by ${p.receivedBy}`
+          `- ${new Date(p.payment_date).toLocaleDateString()}: Ksh${p.amount} via ${p.method}, received by ${p.received_by}`
       )
       .join("\n");
 
     return encodeURIComponent(`Hello, I hope you are well. Here is the summary of your debt:
-      *Debt Summary for ${customer.customerName}*\n
+      *Debt Summary for ${customer.customer_name}*\n
  Phone: ${customer.phone}
  Total: Ksh${customer.total}
  Balance: Ksh${balance}
- Due Date: ${customer.dueDate || "N/A"}
+ Due Date: ${customer.due_date ? new Date(customer.due_date).toLocaleDateString() : "N/A"}
 
  *Items Taken:*
 ${itemList || "No items listed."}
@@ -167,11 +266,46 @@ ${paymentList || "No payments yet."}
  Summary generated on ${new Date().toLocaleDateString()}`);
   };
 
+  const toggleSection = (section) => {
+    setExpandedSections({
+      ...expandedSections,
+      [section]: !expandedSections[section]
+    });
+  };
+
+  const canEdit = user?.role === 'owner' || user?.role === 'admin' || 
+                 (user?.role === 'salesperson' && customer?.created_by === user.id);
+
   if (isLoading) {
     return (
       <Layout>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+          <p className="text-gray-600">Loading customer details...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="max-w-2xl mx-auto p-6 text-center">
+          <div className="bg-red-50 p-6 rounded-xl mb-6">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+              <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-red-800 mb-2">Access Error</h3>
+            <p className="text-red-700">{error}</p>
+          </div>
+          <button
+            onClick={() => navigate(-1)}
+            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm font-medium"
+          >
+            Go Back
+          </button>
         </div>
       </Layout>
     );
@@ -180,11 +314,19 @@ ${paymentList || "No payments yet."}
   if (!customer) {
     return (
       <Layout>
-        <div className="p-4 text-center">
-          <p className="text-red-500">Customer not found</p>
+        <div className="max-w-2xl mx-auto p-6 text-center">
+          <div className="bg-yellow-50 p-6 rounded-xl mb-6">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+              <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-yellow-800 mb-2">Customer Not Found</h3>
+            <p className="text-yellow-700">The customer you're looking for doesn't exist.</p>
+          </div>
           <button
             onClick={() => navigate(-1)}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm font-medium"
           >
             Go Back
           </button>
@@ -195,334 +337,445 @@ ${paymentList || "No payments yet."}
 
   return (
     <Layout>
-      <div className="container mx-auto p-4 max-w-6xl mt-30 " >
+      <div className="container mx-auto p-4 max-w-6xl">
         {/* Header Section */}
-        <div className="flex items-center mb-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center text-blue-600 hover:text-blue-800 mr-4"
-          >
-            <FaArrowLeft className="mr-2" /> Back
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">{customer.customerName}</h1>
-            <p className="text-gray-600">{customer.phone}</p>
+        <div className="flex flex-col md:flex-row md:items-start justify-between mb-8">
+          <div className="flex items-start mb-4 md:mb-0">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center text-blue-600 hover:text-blue-800 mr-4 mt-1 transition-colors"
+            >
+              <FaArrowLeft className="mr-2" /> Back
+            </button>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{customer.customer_name}</h1>
+              <div className="flex items-center mt-2 text-gray-600">
+                <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                </svg>
+                <span>{customer.phone}</span>
+              </div>
+              {(user?.role === 'owner' || user?.role === 'admin') && customer.created_by && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Created by: {customer.created_by_user?.name || `User ${customer.created_by}`}
+                </p>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex space-x-3">
+            <button
+              onClick={() => {
+                const summary = generateSummaryMessage();
+                const phone = customer.phone.replace(/^0/, "254");
+                window.open(`https://wa.me/${phone}?text=${summary}`, "_blank");
+              }}
+              className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-colors shadow-sm"
+            >
+              <FaEnvelope className="mr-2" /> WhatsApp
+            </button>
+            <button
+              onClick={() => console.log("Export PDF")}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              <FaFilePdf className="mr-2" /> PDF
+            </button>
           </div>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-100">
-            <h3 className="text-gray-500 text-sm">Total Debt</h3>
-            <p className="text-2xl font-bold">{formatCurrency(customer.total)}</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex items-center">
+              <div className="p-3 rounded-lg bg-blue-100 text-blue-800 mr-4">
+                <FiDollarSign size={20} />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Total Debt</p>
+                <p className="text-xl font-bold text-gray-900">{formatCurrency(customer.total)}</p>
+              </div>
+            </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-100">
-            <h3 className="text-gray-500 text-sm">Amount Paid</h3>
-            <p className="text-2xl font-bold text-green-600">
-              {formatCurrency(customer.amountPaid || 0)}
-            </p>
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex items-center">
+              <div className="p-3 rounded-lg bg-green-100 text-green-800 mr-4">
+                <FiCheckCircle size={20} />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Amount Paid</p>
+                <p className="text-xl font-bold text-green-600">
+                  {formatCurrency(customer.amount_paid || 0)}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow border border-gray-100">
-            <h3 className="text-gray-500 text-sm">Balance</h3>
-            <p className="text-2xl font-bold text-red-600">{formatCurrency(balance)}</p>
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex items-center">
+              <div className="p-3 rounded-lg bg-red-100 text-red-800 mr-4">
+                <FiCreditCard size={20} />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Balance</p>
+                <p className="text-xl font-bold text-red-600">{formatCurrency(balance)}</p>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="flex space-x-8">
-            <button
-              onClick={() => setActiveTab("items")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "items"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              <FaListUl className="inline mr-2" /> Items
-            </button>
-            <button
-              onClick={() => setActiveTab("payments")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "payments"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              <FaMoneyBillAlt className="inline mr-2" /> Payments
-            </button>
-            <button
-              onClick={() => setActiveTab("history")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "history"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              <FaHistory className="inline mr-2" /> History
-            </button>
-          </nav>
-        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
+          <div className="border-b border-gray-200">
+            <nav className="flex flex-col sm:flex-row">
+              <button
+                onClick={() => setActiveTab("items")}
+                className={`py-4 px-6 font-medium text-sm flex items-center ${activeTab === "items" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+              >
+                <FiShoppingCart className="mr-2" /> Items
+                <span className="ml-2 bg-gray-100 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                  {editedItems.length}
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab("payments")}
+                className={`py-4 px-6 font-medium text-sm flex items-center ${activeTab === "payments" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+              >
+                <FaMoneyBillAlt className="mr-2" /> Payments
+                <span className="ml-2 bg-gray-100 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                  {payments.length}
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab("history")}
+                className={`py-4 px-6 font-medium text-sm flex items-center ${activeTab === "history" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+              >
+                <FaHistory className="mr-2" /> History
+                <span className="ml-2 bg-gray-100 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                  {changeLogs.length}
+                </span>
+              </button>
+            </nav>
+          </div>
 
-        {/* Items Tab */}
-        {activeTab === "items" && (
-          <div className="space-y-6">
-            {/* Current Items */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="p-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium">Items Taken</h2>
-              </div>
-              <div className="divide-y divide-gray-200">
-                {editedItems.map((item, index) => (
-                  <div key={index} className="p-4 grid grid-cols-12 gap-4 items-center">
-                    <div className="col-span-4">
-                      <input
-                        type="text"
-                        name="name"
-                        value={item.name}
-                        onChange={(e) => handleItemChange(index, e)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Item Name"
-                      />
+          {/* Tab Content */}
+          <div className="p-6">
+            {/* Items Tab */}
+            {activeTab === "items" && (
+              <div className="space-y-6">
+                {/* Items List */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Items Taken</h3>
+                  {editedItems.length > 0 ? (
+                    <div className="bg-gray-50 rounded-lg divide-y divide-gray-200">
+                      {editedItems.map((item, index) => (
+                        <div key={index} className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                          <div className="md:col-span-5">
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Item Name</label>
+                            <input
+                              type="text"
+                              name="name"
+                              value={item.name}
+                              onChange={(e) => handleItemChange(index, e)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Item Name"
+                              disabled={!canEdit}
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Quantity</label>
+                            <input
+                              type="number"
+                              name="quantity"
+                              value={item.quantity}
+                              onChange={(e) => handleItemChange(index, e)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Qty"
+                              disabled={!canEdit}
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Price</label>
+                            <input
+                              type="number"
+                              name="price"
+                              value={item.price}
+                              onChange={(e) => handleItemChange(index, e)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Price"
+                              disabled={!canEdit}
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
+                            <input
+                              type="text"
+                              name="category"
+                              value={item.category || ""}
+                              onChange={(e) => handleItemChange(index, e)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Category"
+                              disabled={!canEdit}
+                            />
+                          </div>
+                          {canEdit && (
+                            <div className="md:col-span-1 flex justify-end">
+                              <button
+                                onClick={() => handleRemoveItem(index)}
+                                className="text-red-600 hover:text-red-800 p-2 transition-colors"
+                                title="Remove item"
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        name="quantity"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(index, e)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Qty"
-                      />
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg p-8 text-center">
+                      <FiShoppingCart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No items added</h3>
+                      <p className="text-gray-500">Add items to this debt record</p>
                     </div>
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        name="price"
-                        value={item.price}
-                        onChange={(e) => handleItemChange(index, e)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Price"
-                      />
-                    </div>
-                    <div className="col-span-3">
-                      <input
-                        type="text"
-                        name="category"
-                        value={item.category || ""}
-                        onChange={(e) => handleItemChange(index, e)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Category"
-                      />
-                    </div>
-                    <div className="col-span-1 flex justify-end">
+                  )}
+                </div>
+
+                {canEdit && (
+                  <>
+                    {/* Save Button */}
+                    <div className="flex justify-end">
                       <button
-                        onClick={() => handleRemoveItem(index)}
-                        className="text-red-600 hover:text-red-800 p-2"
+                        onClick={handleSaveChanges}
+                        className="inline-flex items-center px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors"
                       >
-                        <FaTrash />
+                        <FaSave className="mr-2" /> Save Changes
                       </button>
                     </div>
-                  </div>
-                ))}
-              </div>
-              <div className="p-4 border-t border-gray-200">
-                <button
-                  onClick={handleSaveChanges}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <FaSave className="mr-2" /> Save Changes
-                </button>
-              </div>
-            </div>
 
-            {/* Add New Item */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="p-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium">Add New Item</h2>
-              </div>
-              <div className="p-4 grid grid-cols-12 gap-4">
-                <div className="col-span-4">
-                  <input
-                    name="name"
-                    placeholder="Item Name"
-                    value={newItem.name}
-                    onChange={handleNewItemChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <input
-                    name="quantity"
-                    type="number"
-                    placeholder="Quantity"
-                    value={newItem.quantity}
-                    onChange={handleNewItemChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <input
-                    name="price"
-                    type="number"
-                    placeholder="Price"
-                    value={newItem.price}
-                    onChange={handleNewItemChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div className="col-span-3">
-                  <input
-                    name="category"
-                    placeholder="Category"
-                    value={newItem.category}
-                    onChange={handleNewItemChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div className="col-span-1">
-                  <button
-                    onClick={handleAddItem}
-                    className="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                  >
-                    <FaPlus />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+                    {/* Add New Item Section */}
+                    <div className="border-t border-gray-200 pt-6">
+                      <button
+                        onClick={() => toggleSection('addItem')}
+                        className="flex items-center text-blue-600 hover:text-blue-800 mb-4 transition-colors"
+                      >
+                        {expandedSections.addItem ? <FiChevronUp className="mr-2" /> : <FiChevronDown className="mr-2" />}
+                        Add New Item
+                      </button>
 
-        {/* Payments Tab */}
-        {activeTab === "payments" && (
-          <div className="space-y-6">
-            {/* Add Payment */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="p-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium">Add Payment</h2>
-              </div>
-              <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <input
-                    name="amount"
-                    placeholder="Amount"
-                    value={newPayment.amount}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <select
-                    name="method"
-                    value={newPayment.method}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Payment Method</option>
-                    <option value="Cash">Cash</option>
-                    <option value="M-Pesa">M-Pesa</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Cheque">Cheque</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <input
-                    name="receivedBy"
-                    placeholder="Received By"
-                    value={newPayment.receivedBy}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <button
-                    onClick={handleAddPayment}
-                    className="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <FaPlus className="mr-2" /> Add Payment
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment History */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="p-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium">Payment History</h2>
-              </div>
-              <div className="divide-y divide-gray-200">
-                {payments.length > 0 ? (
-                  payments.map((p, i) => (
-                    <div key={i} className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-500">Date</p>
-                        <p>{p.date}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Amount</p>
-                        <p className="font-medium">{formatCurrency(p.amount)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Method</p>
-                        <p>{p.method}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Received By</p>
-                        <p>{p.receivedBy}</p>
-                      </div>
+                      {expandedSections.addItem && (
+                        <div className="bg-blue-50 p-5 rounded-lg">
+                          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                            <div className="md:col-span-5">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Item Name</label>
+                              <input
+                                name="name"
+                                placeholder="Item Name"
+                                value={newItem.name}
+                                onChange={handleNewItemChange}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                              <input
+                                name="quantity"
+                                type="number"
+                                placeholder="Qty"
+                                value={newItem.quantity}
+                                onChange={handleNewItemChange}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
+                              <input
+                                name="price"
+                                type="number"
+                                placeholder="Price"
+                                value={newItem.price}
+                                onChange={handleNewItemChange}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                              <input
+                                name="category"
+                                placeholder="Category"
+                                value={newItem.category}
+                                onChange={handleNewItemChange}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            </div>
+                            <div className="md:col-span-1 flex items-end">
+                              <button
+                                onClick={handleAddItem}
+                                className="w-full h-10 flex justify-center items-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                                title="Add item"
+                              >
+                                <FaPlus />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ))
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Payments Tab */}
+            {activeTab === "payments" && (
+              <div className="space-y-6">
+                {canEdit && (
+                  <div className="border-b border-gray-200 pb-6">
+                    <button
+                      onClick={() => toggleSection('addPayment')}
+                      className="flex items-center text-blue-600 hover:text-blue-800 mb-4 transition-colors"
+                    >
+                      {expandedSections.addPayment ? <FiChevronUp className="mr-2" /> : <FiChevronDown className="mr-2" />}
+                      Add New Payment
+                    </button>
+
+                    {expandedSections.addPayment && (
+                      <div className="bg-blue-50 p-5 rounded-lg">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                          <div className="md:col-span-3">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                            <input
+                              name="amount"
+                              type="number"
+                              placeholder="Amount"
+                              value={newPayment.amount}
+                              onChange={handleInputChange}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                          <div className="md:col-span-3">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Method</label>
+                            <select
+                              name="method"
+                              value={newPayment.method}
+                              onChange={handleInputChange}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              <option value="">Select Method</option>
+                              <option value="Cash">Cash</option>
+                              <option value="M-Pesa">M-Pesa</option>
+                              <option value="Bank Transfer">Bank Transfer</option>
+                              <option value="Cheque">Cheque</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+                          <div className="md:col-span-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Received By</label>
+                            <input
+                              name="received_by"
+                              placeholder="Received By"
+                              value={newPayment.received_by}
+                              onChange={handleInputChange}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                          <div className="md:col-span-2 flex items-end">
+                            <button
+                              onClick={handleAddPayment}
+                              className="w-full h-10 flex justify-center items-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
+                            >
+                              Add
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Payment History */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Payment History</h3>
+                  {payments.length > 0 ? (
+                    <div className="bg-gray-50 rounded-lg divide-y divide-gray-200">
+                      {payments.map((payment, i) => (
+                        <div key={i} className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div>
+                            <p className="text-xs font-medium text-gray-500">Date</p>
+                            <p className="font-medium">{new Date(payment.payment_date).toLocaleDateString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500">Amount</p>
+                            <p className="font-medium text-green-600">{formatCurrency(payment.amount)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500">Method</p>
+                            <p>{payment.method}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500">Received By</p>
+                            <p>{payment.received_by}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg p-8 text-center">
+                      <FaMoneyBillAlt className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No payments yet</h3>
+                      <p className="text-gray-500">Payments will appear here once added</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* History Tab */}
+            {activeTab === "history" && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Change History</h3>
+                {changeLogs.length > 0 ? (
+                  <div className="space-y-4">
+                    {changeLogs.map((log, i) => (
+                      <div key={i} className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-medium text-gray-900">
+                            {new Date(log.timestamp).toLocaleString()}
+                          </p>
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                            {log.action_type}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">
+                          Changed by: {log.changed_by_user?.name || `User ${log.changed_by}`}
+                        </p>
+                        {log.old_values && (
+                          <div className="mb-2">
+                            <p className="text-xs font-medium text-gray-500">Previous values:</p>
+                            <pre className="text-xs text-gray-600 bg-white p-2 rounded mt-1 overflow-x-auto">
+                              {JSON.stringify(log.old_values, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                        {log.new_values && (
+                          <div>
+                            <p className="text-xs font-medium text-gray-500">New values:</p>
+                            <pre className="text-xs text-gray-600 bg-white p-2 rounded mt-1 overflow-x-auto">
+                              {JSON.stringify(log.new_values, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <div className="p-4 text-center text-gray-500">
-                    No payment history available
+                  <div className="bg-gray-50 rounded-lg p-8 text-center">
+                    <FaHistory className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No changes recorded</h3>
+                    <p className="text-gray-500">Changes will appear here once made</p>
                   </div>
                 )}
               </div>
-            </div>
+            )}
           </div>
-        )}
-
-        {/* History Tab */}
-        {activeTab === "history" && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium">Change Log</h2>
-            </div>
-            <div className="divide-y divide-gray-200">
-              {itemHistory.length > 0 ? (
-                itemHistory.map((entry, i) => (
-                  <div key={i} className="p-4">
-                    <p className="text-sm">{entry}</p>
-                  </div>
-                ))
-              ) : (
-                <div className="p-4 text-center text-gray-500">
-                  No changes recorded yet
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="mt-6 flex flex-wrap gap-4">
-          <button
-            onClick={() => console.log("Export PDF")}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <FaFilePdf className="mr-2" /> Export PDF
-          </button>
-          <button
-            onClick={() => {
-              const summary = generateSummaryMessage();
-              const phone = customer.phone.replace(/^0/, "254");
-              window.open(`https://wa.me/${phone}?text=${summary}`, "_blank");
-            }}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-          >
-            <FaEnvelope className="mr-2" /> Send Summary via WhatsApp
-          </button>
         </div>
       </div>
     </Layout>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { FiHome, FiList, FiPlusCircle, FiSettings } from "react-icons/fi";
+import { FiHome, FiList, FiPlusCircle, FiSettings, FiUsers } from "react-icons/fi";
 
 export default function Sidebar() {
   const location = useLocation();
@@ -8,6 +8,7 @@ export default function Sidebar() {
     { to: "/dashboard", label: "Dashboard", icon: <FiHome className="w-5 h-5" /> },
     { to: "/debts", label: "My Debts", icon: <FiList className="w-5 h-5" /> },
     { to: "/add-debt", label: "Add New Debt", icon: <FiPlusCircle className="w-5 h-5" /> },
+    { to: "/customers", label: "Customers", icon: <FiUsers className="w-5 h-5" /> },
     { to: "/settings", label: "Settings", icon: <FiSettings className="w-5 h-5" /> }
   ];
 
