@@ -228,7 +228,7 @@ function AddDebt() {
 
   return (
     <Layout>
-      <div className="container mx-auto p-4 max-w-6xl">
+      <div className="container mx-auto p-4 max-w-6xl ml-10 mt-12" >
         <h1 className="text-2xl font-bold text-gray-800 mb-6">Add New Debt</h1>
 
         {error && (

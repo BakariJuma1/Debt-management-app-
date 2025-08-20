@@ -1,25 +1,27 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  // FaMoneyBillAlt,
-  // FaFilePdf,
-  // FaEnvelope,
-  // FaListUl,
-  // FaHistory,
-  // FaTrash,
-  // FaArrowLeft,
-  // FaPlus,
-  // FaSave,
-  // FaEdit,
-  // FiMoreVertical,
-  // // FiChevronDown,
-  // // FiChevronUp,
-  // FiDollarSign,
-  // FiShoppingCart,
-  // FiUser,
-  // FiCreditCard,
-  // FiCheckCircle
+  FaMoneyBillAlt,
+  FaFilePdf,
+  FaEnvelope,
+  FaListUl,
+  FaHistory,
+  FaTrash,
+  FaArrowLeft,
+  FaPlus,
+  FaSave,
+  FaEdit,
 } from "react-icons/fa";
+import {
+  FiMoreVertical,
+  FiChevronDown,
+  FiChevronUp,
+  FiDollarSign,
+  FiShoppingCart,
+  FiUser,
+  FiCreditCard,
+  FiCheckCircle
+} from "react-icons/fi";
 import Layout from "../layout/Layout";
 import API_BASE_URL from "../../api";
 import { useAuth } from "../../AuthProvider"; 
@@ -290,7 +292,7 @@ ${paymentList || "No payments yet."}
   if (error) {
     return (
       <Layout>
-        <div className="max-w-2xl mx-auto p-6 text-center">
+        <div className="max-w-2xl mx-auto p-6 text-center ml-10">
           <div className="bg-red-50 p-6 rounded-xl mb-6">
             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
               <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -337,7 +339,7 @@ ${paymentList || "No payments yet."}
 
   return (
     <Layout>
-      <div className="container mx-auto p-4 max-w-6xl">
+      <div className="container mx-auto p-4 max-w-6xl ml-10 mt-17">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-start justify-between mb-8">
           <div className="flex items-start mb-4 md:mb-0">
