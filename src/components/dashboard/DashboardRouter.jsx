@@ -6,8 +6,8 @@ import { Navigate, useLocation } from "react-router-dom"; // Added useLocation i
 // Import dashboard components
 import OwnerDashboardDesktop from "../../pages/dashboard/OwnerDashboardDesktop";
 import OwnerDashboardMobile from "../../pages/dashboard/OwnerDashboardMobile";
-import SalesmanDashboardDesktop from "../../pages/dashboard/SalesmanDashboardDesktop";
-import SalesmanDashboardMobile from "../../pages/dashboard/SalesmanDashboardMobile";
+import SalespersonDashboardDesktop from "../../pages/dashboard/SalespersonDashboardDesktop";
+import SalespersonDashboardMobile from "../../pages/dashboard/SalespersonDashboardMobile";
 import AdminDashboardDesktop from "../../pages/dashboard/AdminDashboardDesktop";
 import AdminDashboardMobile from "../../pages/dashboard/AdminDashboardMobile";
 import { useEffect } from "react";
@@ -51,8 +51,8 @@ const DashboardRouter = () => {
   switch (role) {
     case "owner":
       return isMobile ? <OwnerDashboardMobile /> : <OwnerDashboardDesktop />;
-    case "salesman":
-      return isMobile ? <SalesmanDashboardMobile /> : <SalesmanDashboardDesktop />;
+    case "salesperson":
+      return isMobile ? <SalespersonDashboardMobile /> : <SalespersonDashboardDesktop />;
     case "admin":
       return isMobile ? <AdminDashboardMobile /> : <AdminDashboardDesktop />;
     default:
