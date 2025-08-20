@@ -42,7 +42,16 @@ function BusinessInfoForm({ isInSidebar = false }) {
       
       if (response.data) {
         setBusiness(response.data);
-        setBusinessForm(response.data);
+
+      setBusinessForm({
+        name: response.data.name || "",
+        address: response.data.address || "",
+        phone: response.data.phone || "",
+        email: response.data.email || "",
+        website: response.data.website || "",
+        description: response.data.description || "",
+      });
+
         setIsCreating(false);
       } else {
         setIsCreating(true);
