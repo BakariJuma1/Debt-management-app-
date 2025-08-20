@@ -92,6 +92,7 @@ const MobileDashboard = ({
     { path: "/dashboard", label: "Dashboard" },
     { path: "/debts", label: "All Debts" },
     { path: "/add-debt", label: "Add New Debt" },
+    { path: "/customers", label: "Customers" },
     { path: "/settings", label: "Settings" }
   ];
 
