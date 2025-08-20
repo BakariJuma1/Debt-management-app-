@@ -281,7 +281,7 @@ ${paymentList || "No payments yet."}
   if (isLoading) {
     return (
       <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center justify-center min-h-[400px] ">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
           <p className="text-gray-600">Loading customer details...</p>
         </div>
@@ -292,7 +292,7 @@ ${paymentList || "No payments yet."}
   if (error) {
     return (
       <Layout>
-        <div className="max-w-2xl mx-auto p-4 md:p-6 text-center">
+        <div className="max-w-2xl mx-auto p-4 md:p-6 text-center ">
           <div className="bg-red-50 p-4 md:p-6 rounded-xl mb-6">
             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
               <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -339,7 +339,7 @@ ${paymentList || "No payments yet."}
 
   return (
     <Layout>
-      <div className="container mx-auto p-3 md:p-4 max-w-6xl mt-4 md:mt-5">
+      <div className="container mx-auto p-3 md:p-4 max-w-6xl  md:mt-12">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-start justify-between mb-6 md:mb-8">
           <div className="flex items-start mb-4 md:mb-0">
