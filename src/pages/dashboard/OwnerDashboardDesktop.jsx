@@ -1,214 +1,209 @@
-import React, { useEffect, useState } from "react";
-import Sidebar from "../../components/sidebar/Sidebar";
-import { 
-  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, ScatterChart, Scatter, ZAxis,
-  RadialBarChart, RadialBar
-} from "recharts";
-import MobileDashboard from "./OwnerDashboardMobile";
-import { 
+import React, { useState, useEffect } from 'react';
+import {
   FiRefreshCw, FiAlertCircle, FiCalendar, FiTrendingUp, 
-  FiDownload, FiMail, FiClock, FiUser, FiTag, FiChevronRight 
+  FiDownload, FiChevronDown, FiChevronUp,
+  FiMail, FiClock, FiUser, FiTag, FiDollarSign, FiPieChart,
+  FiFilter, FiX, FiPlus, FiBell, FiChevronRight, FiBriefcase
 } from "react-icons/fi";
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend
+} from "recharts";
+import Sidebar from "../../components/sidebar/Sidebar";
 import API_BASE_URL from "../../api";
+
+// Modern color scheme with gradients
+const COLORS = ["#6366F1", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
+const STATUS_COLORS = {
+  'pending': '#F59E0B',
+  'partial': '#6366F1',
+  'paid': '#10B981',
+  'overdue': '#EF4444'
+};
+
+// Gradient backgrounds for cards
+const CARD_GRADIENTS = [
+  'bg-gradient-to-r from-indigo-500 to-indigo-600',
+  'bg-gradient-to-r from-emerald-500 to-emerald-600',
+  'bg-gradient-to-r from-amber-500 to-amber-600',
+  'bg-gradient-to-r from-rose-500 to-rose-600'
+];
 
 const DASHBOARD_API_URL = `${API_BASE_URL}/dashboard-owner`;
 
-// Modern color palette
-const COLORS = {
-  primary: "#4F46E5", // Indigo
-  secondary: "#10B981", // Emerald
-  accent: "#F59E0B", // Amber
-  danger: "#EF4444", // Red
-  success: "#10B981", // Emerald
-  warning: "#F59E0B", // Amber
-  info: "#3B82F6", // Blue
-  dark: "#1F2937", // Gray-800
-  light: "#F3F4F6" // Gray-100
-};
-
-const CHART_COLORS = ["#4F46E5", "#10B981", "#F59E0B", "#EF4444", "#3B82F6"];
-const RISK_COLORS = {
-  'high': '#EF4444',
-  'medium': '#F59E0B',
-  'low': '#10B981',
-  'reliable': '#3B82F6'
-};
-
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error("ErrorBoundary caught:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-4 bg-red-50 text-red-600 rounded-xl">
-          <h2 className="text-lg font-semibold">Something went wrong with the dashboard.</h2>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            Refresh Page
-          </button>
-        </div>
-      );
-    }
-
-    return this.props.children; 
-  }
-}
-
-function StatCard({ title, value, icon, trend, change, secondaryValue, variant = 'default' }) {
-  const variantClasses = {
-    default: 'bg-white border-gray-200',
-    danger: 'bg-red-50 border-red-100',
-    warning: 'bg-amber-50 border-amber-100',
-    success: 'bg-emerald-50 border-emerald-100',
-    info: 'bg-blue-50 border-blue-100'
-  };
-
-  const trendIcons = {
-    up: <FiTrendingUp className="text-emerald-500" />,
-    down: <FiTrendingUp className="text-red-500 transform rotate-180" />,
-    none: null
-  };
-
-  return (
-    <div className={`p-5 rounded-xl border ${variantClasses[variant]} transition-all hover:shadow-md`}>
-      <div className="flex justify-between items-start">
-        <div>
-          <h3 className="text-gray-500 text-sm font-medium mb-2">{title}</h3>
-          <div className="text-2xl font-bold text-gray-800">{value || 'N/A'}</div>
-          {secondaryValue && <div className="text-sm text-gray-500 mt-1">{secondaryValue}</div>}
-        </div>
-        <div className="p-2 rounded-lg bg-white border border-gray-200 shadow-sm">
-          {icon}
-        </div>
-      </div>
-      {trend && change && (
-        <div className="flex items-center mt-4 text-sm">
-          <span className="mr-1">{trendIcons[trend]}</span>
-          <span className={trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-600' : 'text-gray-600'}>
-            {change}
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BusinessOwnerDashboard() {
+const BusinessOwnerDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [timeRange, setTimeRange] = useState('month');
+  const [dateRange, setDateRange] = useState({
+    start_date: '',
+    end_date: ''
+  });
   const [exporting, setExporting] = useState(false);
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
-  const [emailRecipient, setEmailRecipient] = useState('');
-  const [emailSubject, setEmailSubject] = useState('Business Debt Report');
-  const [emailMessage, setEmailMessage] = useState('Please find attached the latest business debt report.');
-  const [businessName, setBusinessName] = useState('My Business');
+  const [timeRange, setTimeRange] = useState('month');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
+  // Fetch data from API
   useEffect(() => {
     fetchDashboardData();
-  }, [timeRange]);
+    // Mock notifications for demo
+    setNotifications([
+      { id: 1, message: 'New debt added by Salesperson A', time: '5 mins ago', read: false },
+      { id: 2, message: 'Payment received from Customer B', time: '1 hour ago', read: true },
+      { id: 3, message: 'Weekly report is ready', time: '3 hours ago', read: true }
+    ]);
+  }, [dateRange, timeRange]);
 
-  async function fetchDashboardData() {
+  const fetchDashboardData = async () => {
     setIsLoading(true);
     setError(null);
     try {
+      // Build query string with date filters
+      const params = new URLSearchParams();
+      if (dateRange.start_date) params.append('start_date', dateRange.start_date);
+      if (dateRange.end_date) params.append('end_date', dateRange.end_date);
+      params.append('time_range', timeRange);
+      
+      const queryString = params.toString();
+      const url = queryString ? `${DASHBOARD_API_URL}?${queryString}` : DASHBOARD_API_URL;
+      
       const token = localStorage.getItem('token');
-      const res = await fetch(`${DASHBOARD_API_URL}?time_range=${timeRange}`, {
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || 
-          `Server error: ${res.status} ${res.statusText}`
-        );
-      }
-
-      const data = await res.json();
       
-      if (!data?.summary) {
-        throw new Error('Invalid response format from server');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${response.status} ${response.statusText}`);
       }
       
+      const data = await response.json();
       setDashboardData(data);
-      if (data.business_name) {
-        setBusinessName(data.business_name);
-      }
     } catch (err) {
       console.error("Error fetching dashboard data:", err);
       setError(err.message);
-      setDashboardData(null);
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
-  async function exportData() {
+  const handleExportData = async () => {
     setExporting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      alert('Export completed! Data would be downloaded in a real app.');
+      // Build query string with date filters
+      const params = new URLSearchParams();
+      if (dateRange.start_date) params.append('start_date', dateRange.start_date);
+      if (dateRange.end_date) params.append('end_date', dateRange.end_date);
+      
+      const queryString = params.toString();
+      const url = queryString ? `${API_BASE_URL}/export-owner?${queryString}` : `${API_BASE_URL}/export-owner`;
+      
+      const token = localStorage.getItem('token');
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.status} ${response.statusText}`);
+      }
+      
+      // Create a download link for the file
+      const blob = await response.blob();
+      const urlObject = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = urlObject;
+      link.setAttribute('download', 'owner-report.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
     } catch (err) {
       console.error("Export failed:", err);
+      alert('Export failed. Please try again.');
     } finally {
       setExporting(false);
     }
-  }
+  };
 
-  function sendEmailReport() {
-    alert(`Report would be sent to: ${emailRecipient}\nSubject: ${emailSubject}\nMessage: ${emailMessage}`);
+  const sendEmailReport = () => {
+    alert('Report would be sent in a real implementation');
     setEmailModalOpen(false);
-  }
+  };
 
-  if (isMobile) {
+  const StatCard = ({ title, value, icon, trend, change, secondaryValue, index = 0 }) => {
     return (
-      <MobileDashboard
-        data={dashboardData}
-        isLoading={isLoading}
-        error={error}
-        onRefresh={fetchDashboardData}
-        businessName={businessName}
-      />
+      <div className={`p-5 rounded-2xl text-white ${CARD_GRADIENTS[index % CARD_GRADIENTS.length]} shadow-lg`}>
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-sm font-medium opacity-90 mb-1">{title}</h3>
+            <div className="text-2xl font-bold">{value || 'N/A'}</div>
+            {secondaryValue && <div className="text-xs opacity-80 mt-1">{secondaryValue}</div>}
+          </div>
+          <div className="p-2 rounded-xl bg-white bg-opacity-20 backdrop-blur-sm">
+            {React.cloneElement(icon, { className: "text-white w-5 h-5" })}
+          </div>
+        </div>
+        {trend && change && (
+          <div className="flex items-center mt-3 text-xs font-medium">
+            <span className="mr-1">
+              {trend === 'up' ? 
+                <FiTrendingUp className="text-white" /> : 
+                <FiTrendingUp className="text-white transform rotate-180" />
+              }
+            </span>
+            <span>{change}</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (isLoading && !dashboardData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex">
+        <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+        <div className="flex-1 flex items-center justify-center ml-0 lg:ml-16 transition-all duration-300">
+          <div className="animate-pulse flex flex-col items-center">
+            <div className="w-16 h-16 bg-indigo-200 rounded-full mb-4"></div>
+            <div className="h-4 bg-gray-200 rounded w-32"></div>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 p-8 ml-64 mt-18">
-        {/* Header with Controls */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+    <div className="min-h-screen bg-gray-50 flex">
+      <Sidebar/>
+      
+      {/* Main Content */}
+      <div className="flex-1 p-6 ml-0 lg:ml-64 mt-16">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 md:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">{businessName} Dashboard</h1>
-            <p className="text-gray-600">Comprehensive overview of your business finances</p>
+            <h1 className="text-2xl font-bold text-gray-800">Business Owner Dashboard</h1>
+            <p className="text-gray-500 mt-1">Comprehensive overview of your business performance</p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          
+          <div className="flex flex-wrap items-center gap-2 mt-4 md:mt-0">
+            {/* Notifications */}
+            <div className="relative">
+              <button className="p-2 rounded-full bg-white shadow-sm hover:shadow-md transition-shadow">
+                <FiBell className="text-gray-600" />
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                )}
+              </button>
+            </div>
+            
+            {/* Time Range Selector */}
             <select 
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
@@ -219,44 +214,94 @@ function BusinessOwnerDashboard() {
               <option value="quarter">Last 90 days</option>
               <option value="year">Last 12 months</option>
             </select>
+            
+            {/* Filter Button */}
+            <button 
+              onClick={() => setShowDateFilter(!showDateFilter)}
+              className="flex items-center gap-2 bg-white text-gray-700 rounded-xl px-3 py-2 text-sm shadow-sm hover:shadow-md transition-shadow"
+            >
+              <FiFilter className="w-4 h-4" />
+              <span className="hidden sm:inline">Filter</span>
+            </button>
+            
             <button 
               onClick={fetchDashboardData}
               disabled={isLoading}
-              className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 bg-white text-gray-700 rounded-xl px-3 py-2 text-sm shadow-sm hover:shadow-md transition-shadow disabled:opacity-50"
             >
               <FiRefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh Data
+              <span className="hidden sm:inline">Refresh</span>
             </button>
+            
             <button 
               onClick={() => setEmailModalOpen(true)}
-              className="flex items-center gap-2 bg-emerald-600 text-white rounded-lg px-4 py-2 text-sm hover:bg-emerald-700 transition-colors"
+              className="flex items-center gap-2 bg-emerald-600 text-white rounded-xl px-3 py-2 text-sm shadow-sm hover:bg-emerald-700 transition-colors"
             >
               <FiMail className="w-4 h-4" />
-              Email Report
+              <span className="hidden sm:inline">Email Report</span>
             </button>
+            
             <button 
-              onClick={exportData}
+              onClick={handleExportData}
               disabled={exporting}
-              className="flex items-center gap-2 bg-indigo-600 text-white rounded-lg px-4 py-2 text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 bg-indigo-600 text-white rounded-xl px-3 py-2 text-sm shadow-sm hover:bg-indigo-700 transition-colors disabled:opacity-50"
             >
               <FiDownload className={`w-4 h-4 ${exporting ? 'animate-spin' : ''}`} />
-              Export Data
+              <span className="hidden sm:inline">Export</span>
             </button>
           </div>
         </div>
 
+        {/* Date Filter Dropdown */}
+        {showDateFilter && (
+          <div className="bg-white p-4 rounded-xl shadow-sm mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-medium text-gray-700">Filter by Date Range</h3>
+              <button onClick={() => setShowDateFilter(false)}>
+                <FiX className="text-gray-500" />
+              </button>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={dateRange.start_date}
+                  onChange={(e) => setDateRange({...dateRange, start_date: e.target.value})}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={dateRange.end_date}
+                  onChange={(e) => setDateRange({...dateRange, end_date: e.target.value})}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+              <div className="flex items-end">
+                <button 
+                  onClick={() => setDateRange({ start_date: '', end_date: '' })}
+                  className="h-10 px-4 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Email Report Modal */}
         {emailModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl p-6 w-full max-w-md">
-              <h3 className="text-lg font-semibold mb-4">Send {businessName} Report</h3>
+              <h3 className="text-lg font-semibold mb-4">Send Business Report</h3>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Recipient Email</label>
                   <input
                     type="email"
-                    value={emailRecipient}
-                    onChange={(e) => setEmailRecipient(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     placeholder="recipient@example.com"
                   />
@@ -265,16 +310,14 @@ function BusinessOwnerDashboard() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
                   <input
                     type="text"
-                    value={emailSubject}
-                    onChange={(e) => setEmailSubject(e.target.value)}
+                    value="Business Performance Report"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
                   <textarea
-                    value={emailMessage}
-                    onChange={(e) => setEmailMessage(e.target.value)}
+                    value="Please find attached the latest business performance report."
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     rows="3"
                   />
@@ -302,33 +345,252 @@ function BusinessOwnerDashboard() {
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-lg">
             <div className="flex items-center">
-              <FiAlertCircle className="text-red-500 mr-3" />
+              <FiAlertCircle className="text-red-500 mr-3 flex-shrink-0" />
               <div>
                 <h3 className="text-sm font-medium text-red-800">Error loading data</h3>
-                <p className="text-sm text-red-700">{error}</p>
+                <p className="text-sm text-red-700 mt-1">{error}</p>
                 <button 
                   onClick={fetchDashboardData}
-                  className="mt-2 text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
+                  className="mt-2 text-blue-600 text-sm hover:text-blue-800 font-medium"
                 >
-                  Try Again
+                  Try again
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Loading State */}
-        {isLoading && !dashboardData && (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-pulse text-gray-500">Loading {businessName} dashboard data...</div>
-          </div>
-        )}
+        {/* Dashboard Content */}
+        {dashboardData ? (
+          <div className="space-y-6">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+              <StatCard 
+                title="Total Debts" 
+                value={dashboardData.summary?.total_debts ? `Ksh ${dashboardData.summary.total_debts.toLocaleString()}` : 'N/A'} 
+                icon={<FiTag />}
+                index={0}
+              />
+              <StatCard 
+                title="Total Amount" 
+                value={dashboardData.summary?.total_amount ? `Ksh ${dashboardData.summary.total_amount.toLocaleString()}` : 'N/A'} 
+                icon={<FiPieChart />}
+                index={1}
+              />
+              <StatCard 
+                title="Total Paid" 
+                value={dashboardData.summary?.total_paid ? `Ksh ${dashboardData.summary.total_paid.toLocaleString()}` : 'N/A'} 
+                icon={<FiTrendingUp />}
+                index={2}
+              />
+              <StatCard 
+                title="Recovery Rate" 
+                value={dashboardData.summary?.recovery_rate ? `${dashboardData.summary.recovery_rate.toFixed(1)}%` : 'N/A'} 
+                icon={<FiTrendingUp />}
+                index={3}
+              />
+            </div>
 
-        {/* Empty State */}
-        {!isLoading && !error && !dashboardData && (
-          <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
+              {/* Left Column */}
+              <div className="lg:col-span-2 space-y-5 md:space-y-6">
+                {/* Performance vs Target */}
+                <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border border-gray-100">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Business Performance</h2>
+                  {dashboardData.performance_vs_target ? (
+                    <>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-600">Target: Ksh {dashboardData.performance_vs_target.target_amount?.toLocaleString() || 'N/A'}</span>
+                        <span className="text-sm font-medium text-indigo-600">
+                          {dashboardData.performance_vs_target.achievement_percent?.toFixed(1) || '0'}% Achieved
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 mb-3">
+                        <div 
+                          className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-2.5 rounded-full" 
+                          style={{ width: `${Math.min(dashboardData.performance_vs_target.achievement_percent || 0, 100)}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Collected: Ksh {dashboardData.performance_vs_target.collected?.toLocaleString() || 'N/A'}</span>
+                        <span className="text-gray-600">
+                          Remaining: Ksh {(dashboardData.performance_vs_target.target_amount - dashboardData.performance_vs_target.collected)?.toLocaleString() || 'N/A'}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-gray-500">No performance data available</p>
+                  )}
+                </div>
+
+                {/* Status Breakdown */}
+                <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border border-gray-100">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Debt Status Breakdown</h2>
+                  <div className="h-64">
+                    {dashboardData.summary?.status_breakdown ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={Object.entries(dashboardData.summary.status_breakdown).map(([name, value]) => ({ name, value }))}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={60}
+                            outerRadius={80}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            labelLine={false}
+                          >
+                            {Object.entries(dashboardData.summary.status_breakdown).map(([name], index) => (
+                              <Cell key={`cell-${index}`} fill={STATUS_COLORS[name] || COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            formatter={(value) => [`${value} debts`, 'Count']}
+                            contentStyle={{ 
+                              borderRadius: '8px', 
+                              border: '1px solid #e5e7eb',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                            }}
+                          />
+                          <Legend 
+                            iconType="circle"
+                            iconSize={10}
+                            layout="vertical"
+                            verticalAlign="middle"
+                            align="right"
+                            wrapperStyle={{ paddingLeft: '20px' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-500">
+                        No status breakdown data available
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Top Debtors */}
+                <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border border-gray-100">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800">Top Debtors</h2>
+                    <button className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center">
+                      View All <FiChevronRight className="ml-1" />
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead>
+                        <tr>
+                          <th className="px-3 py-2 md:px-4 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                          <th className="px-3 py-2 md:px-4 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                          <th className="px-3 py-2 md:px-4 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                          <th className="px-3 py-2 md:px-4 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {dashboardData.customer_segmentation?.top_debtors?.slice(0, 5).map((customer, index) => (
+                          <tr key={index} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-3 py-2 md:px-4 md:py-3 whitespace-nowrap text-sm font-medium text-gray-900">{customer.customer || 'Unknown'}</td>
+                            <td className="px-3 py-2 md:px-4 md:py-3 whitespace-nowrap text-sm text-gray-500">{customer.phone || 'N/A'}</td>
+                            <td className="px-3 py-2 md:px-4 md:py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
+                              Ksh {customer.amount?.toLocaleString() || '0'}
+                            </td>
+                            <td className="px-3 py-2 md:px-4 md:py-3 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                ${customer.status === 'paid' ? 'bg-green-100 text-green-800' : 
+                                  customer.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                                  customer.status === 'overdue' ? 'bg-red-100 text-red-800' :
+                                  'bg-blue-100 text-blue-800'}`}>
+                                {customer.status || 'unknown'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-5 md:space-y-6">
+                {/* Upcoming Payments */}
+                <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border border-gray-100">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800">Upcoming Payments</h2>
+                    <button className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center">
+                      View All <FiChevronRight className="ml-1" />
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {dashboardData.upcoming_due_payments?.slice(0, 5).map((payment, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg transition-colors hover:bg-gray-100">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{payment.customer || 'Unknown'}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Due: {payment.due_date ? new Date(payment.due_date).toLocaleDateString() : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="text-sm font-semibold text-indigo-600">
+                          Ksh {payment.amount?.toLocaleString() || '0'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Recent Communications */}
+                <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border border-gray-100">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800">Recent Communications</h2>
+                    <button className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center">
+                      View All <FiChevronRight className="ml-1" />
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {dashboardData.communication_logs?.slice(0, 5).map((comm, index) => (
+                      <div key={index} className="p-3 bg-gray-50 rounded-lg transition-colors hover:bg-gray-100">
+                        <p className="text-sm text-gray-900">{comm.message || 'No message content'}</p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {comm.timestamp ? new Date(comm.timestamp).toLocaleString() : 'Unknown time'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 border border-gray-100">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button className="flex flex-col items-center justify-center p-3 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors">
+                      <FiMail className="text-indigo-600 mb-2 w-5 h-5" />
+                      <span className="text-sm text-indigo-600 font-medium">Send Report</span>
+                    </button>
+                    <button className="flex flex-col items-center justify-center p-3 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors">
+                      <FiUser className="text-emerald-600 mb-2 w-5 h-5" />
+                      <span className="text-sm text-emerald-600 font-medium">Add Staff</span>
+                    </button>
+                    <button className="flex flex-col items-center justify-center p-3 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors">
+                      <FiDollarSign className="text-amber-600 mb-2 w-5 h-5" />
+                      <span className="text-sm text-amber-600 font-medium">View Reports</span>
+                    </button>
+                    <button className="flex flex-col items-center justify-center p-3 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors">
+                      <FiBriefcase className="text-purple-600 mb-2 w-5 h-5" />
+                      <span className="text-sm text-purple-600 font-medium">Business Settings</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 text-center">
+            <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
+              <FiAlertCircle className="w-8 h-8 text-indigo-500" />
+            </div>
             <h3 className="text-lg font-medium text-gray-800 mb-2">No data available</h3>
-            <p className="text-gray-600 mb-4">Could not load {businessName} dashboard data</p>
+            <p className="text-gray-600 mb-4">Could not load dashboard data. Please check your connection.</p>
             <button 
               onClick={fetchDashboardData}
               className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors"
@@ -337,310 +599,9 @@ function BusinessOwnerDashboard() {
             </button>
           </div>
         )}
-
-        {/* Dashboard Content */}
-        {!isLoading && dashboardData && (
-          <ErrorBoundary>
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <StatCard 
-                title="Total Debts" 
-                value={dashboardData.summary?.total_debts ? `Ksh ${dashboardData.summary.total_debts.toLocaleString()}` : 'N/A'} 
-                icon={<FiTrendingUp className="text-indigo-500" />}
-                trend={dashboardData.summary?.trends?.total_debts > 0 ? 'up' : 'down'}
-                change={dashboardData.summary?.trends?.total_debts ? 
-                  `${Math.abs(dashboardData.summary.trends.total_debts)}% from last period` : ''}
-              />
-
-              <StatCard 
-                title="Paid Debts" 
-                value={dashboardData.summary?.paid_debts ? `Ksh ${dashboardData.summary.paid_debts.toLocaleString()}` : 'N/A'} 
-                icon={<FiTrendingUp className="text-emerald-500" />}
-                trend={dashboardData.summary?.trends?.paid_debts > 0 ? 'up' : 'down'}
-                change={dashboardData.summary?.trends?.paid_debts ? 
-                  `${Math.abs(dashboardData.summary.trends.paid_debts)}% from last period` : ''}
-                secondaryValue={dashboardData.summary?.paid_count ? `${dashboardData.summary.paid_count} paid` : ''}
-              />
-
-              <StatCard 
-                title="Recovery Rate" 
-                value={dashboardData.summary?.recovery_rate ? `${dashboardData.summary.recovery_rate}%` : 'N/A'} 
-                icon={<FiTrendingUp className={
-                  dashboardData.summary?.recovery_rate > 75 ? "text-emerald-500" : 
-                  dashboardData.summary?.recovery_rate > 50 ? "text-amber-500" : "text-red-500"
-                } />}
-                trend={dashboardData.summary?.recovery_rate > 75 ? 'up' : dashboardData.summary?.recovery_rate > 50 ? 'none' : 'down'}
-                variant={
-                  dashboardData.summary?.recovery_rate > 75 ? 'success' : 
-                  dashboardData.summary?.recovery_rate > 50 ? 'warning' : 'danger'
-                }
-              />
-
-              <StatCard 
-                title="Upcoming Due" 
-                value={dashboardData.upcoming_due_payments?.total_amount ? `Ksh ${dashboardData.upcoming_due_payments.total_amount.toLocaleString()}` : 'N/A'} 
-                icon={<FiCalendar className="text-amber-500" />}
-                trend={dashboardData.upcoming_due_payments?.count > 0 ? 'up' : 'none'}
-                change={dashboardData.upcoming_due_payments?.count ? `${dashboardData.upcoming_due_payments.count} this week` : ''}
-                variant="warning"
-              />
-            </div>
-
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Trend Chart */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-semibold text-gray-800">{businessName} Debt Trends</h2>
-                    <div className="text-sm text-gray-500">
-                      {timeRange === 'week' ? 'Last 7 days' : 
-                       timeRange === 'month' ? 'Last 30 days' :
-                       timeRange === 'quarter' ? 'Last 90 days' : 'Last 12 months'}
-                    </div>
-                  </div>
-                  <div className="h-64">
-                    {dashboardData.time_based_analytics ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dashboardData.time_based_analytics}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                          <XAxis dataKey="period" stroke="#6B7280" />
-                          <YAxis stroke="#6B7280" />
-                          <Tooltip 
-                            formatter={(value) => [`Ksh ${value.toLocaleString()}`, 'Amount']}
-                            labelFormatter={(label) => `Period: ${label}`}
-                            contentStyle={{
-                              background: '#FFFFFF',
-                              border: '1px solid #E5E7EB',
-                              borderRadius: '0.5rem',
-                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                            }}
-                          />
-                          <Bar dataKey="paid" name="Paid" fill="#10B981" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="unpaid" name="Unpaid" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="overdue" name="Overdue" fill="#EF4444" radius={[4, 4, 0, 0]} />
-                          <Legend />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-gray-500">
-                        No trend data available
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Customer Segmentation */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-semibold text-gray-800">Customer Risk Analysis</h2>
-                    <button className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors flex items-center">
-                      View All <FiChevronRight className="ml-1" />
-                    </button>
-                  </div>
-                  <div className="h-64">
-                    {dashboardData.customer_segmentation ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                          <CartesianGrid stroke="#F3F4F6" />
-                          <XAxis type="number" dataKey="debt_amount" name="Debt Amount" unit="Ksh" stroke="#6B7280" />
-                          <YAxis type="number" dataKey="payment_delay" name="Avg Delay" unit="days" stroke="#6B7280" />
-                          <ZAxis type="category" dataKey="segment" name="Segment" />
-                          <Tooltip 
-                            cursor={{ strokeDasharray: '3 3' }} 
-                            contentStyle={{
-                              background: '#FFFFFF',
-                              border: '1px solid #E5E7EB',
-                              borderRadius: '0.5rem',
-                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                            }}
-                          />
-                          <Legend />
-                          <Scatter name="High Risk" data={dashboardData.customer_segmentation.high || []} fill={RISK_COLORS.high} />
-                          <Scatter name="Medium Risk" data={dashboardData.customer_segmentation.medium || []} fill={RISK_COLORS.medium} />
-                          <Scatter name="Low Risk" data={dashboardData.customer_segmentation.low || []} fill={RISK_COLORS.low} />
-                          <Scatter name="Reliable" data={dashboardData.customer_segmentation.reliable || []} fill={RISK_COLORS.reliable} />
-                        </ScatterChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-gray-500">
-                        No customer segmentation data available
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Debt Composition Analysis */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-semibold text-gray-800">Debt Composition</h2>
-                    <button className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors flex items-center">
-                      View Details <FiChevronRight className="ml-1" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-2">By Category</h3>
-                      <ul className="space-y-2">
-                        {dashboardData.debt_composition_by_category?.length > 0 ? (
-                          dashboardData.debt_composition_by_category.slice(0, 4).map((item, index) => (
-                            <li key={index} className="flex justify-between py-2 border-b border-gray-100 last:border-0">
-                              <span className="text-gray-700">{item.category || 'Uncategorized'}</span>
-                              <span className="font-medium">Ksh {item.amount?.toLocaleString() || '0'}</span>
-                            </li>
-                          ))
-                        ) : (
-                          <li className="text-gray-500 py-2">No category data</li>
-                        )}
-                      </ul>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-2">Top Debtors</h3>
-                      <ul className="space-y-2">
-                        {dashboardData.customer_segmentation?.top_debtors?.length > 0 ? (
-                          dashboardData.customer_segmentation.top_debtors.slice(0, 4).map((item, index) => (
-                            <li key={index} className="flex justify-between py-2 border-b border-gray-100 last:border-0">
-                              <span className="text-gray-700">{item.customer || 'Unknown'}</span>
-                              <span className="font-medium">Ksh {item.amount?.toLocaleString() || '0'}</span>
-                            </li>
-                          ))
-                        ) : (
-                          <li className="text-gray-500 py-2">No debtor data</li>
-                        )}
-                      </ul>
-                    </div>
-                  </div>
-                </div>  
-              </div>
-
-              {/* Right Column */}
-              <div className="space-y-6">
-                {/* Recovery Progress */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Recovery Progress</h2>
-                  <div className="h-64">
-                    {dashboardData.summary ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RadialBarChart 
-                          innerRadius="20%" 
-                          outerRadius="100%" 
-                          data={[
-                            { name: 'Paid', value: dashboardData.summary.paid_debts || 0, fill: '#10B981' },
-                            { name: 'Unpaid', value: dashboardData.summary.unpaid_debts || 0, fill: '#F59E0B' },
-                            { name: 'Overdue', value: dashboardData.summary.overdue_debts || 0, fill: '#EF4444' }
-                          ]}
-                          startAngle={180}
-                          endAngle={0}
-                        >
-                          <RadialBar 
-                            dataKey="value" 
-                            cornerRadius={10}
-                            background
-                          />
-                          <Legend 
-                            iconSize={10}
-                            layout="vertical"
-                            verticalAlign="middle"
-                            align="right"
-                          />
-                          <Tooltip 
-                            formatter={(value) => [`Ksh ${value.toLocaleString()}`, 'Amount']}
-                            contentStyle={{
-                              background: '#FFFFFF',
-                              border: '1px solid #E5E7EB',
-                              borderRadius: '0.5rem',
-                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                            }}
-                          />
-                        </RadialBarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-gray-500">
-                        No recovery data available
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Customer Credit Scores */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Customer Credit Scores</h2>
-                  <ul className="space-y-3">
-                    {dashboardData.customer_segmentation?.top_debtors?.length > 0 ? (
-                      dashboardData.customer_segmentation.top_debtors.map((debtor, index) => (
-                        <li key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0 hover:bg-gray-50 px-2 rounded-lg transition-colors">
-                          <div className="flex items-center">
-                            <div className={`w-3 h-3 rounded-full mr-3 ${
-                              debtor.credit_score >= 80 ? 'bg-emerald-500' : 
-                              debtor.credit_score >= 60 ? 'bg-amber-500' : 'bg-red-500'
-                            }`}></div>
-                            <div>
-                              <span className="font-medium text-gray-800 block">{debtor.customer || 'Unknown'}</span>
-                              {debtor.days_overdue > 0 && (
-                                <span className="text-xs text-red-500">{debtor.days_overdue} days overdue</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <span className="font-semibold text-red-600 block">Ksh {debtor.amount?.toLocaleString() || '0'}</span>
-                            <span className={`text-xs ${
-                              debtor.credit_score >= 80 ? 'text-emerald-600' : 
-                              debtor.credit_score >= 60 ? 'text-amber-600' : 'text-red-600'
-                            }`}>
-                              Score: {debtor.credit_score || 'N/A'}/100
-                            </span>
-                          </div>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-gray-500 py-2">No customer data available</li>
-                    )}
-                  </ul>
-                </div>
-
-                {/* Communication Logs */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-semibold text-gray-800">Recent Communications</h2>
-                    <button className="text-sm text-indigo-600 hover:text-indigo-800 transition-colors flex items-center">
-                      View All <FiChevronRight className="ml-1" />
-                    </button>
-                  </div>
-                  <ul className="space-y-3">
-                    {dashboardData.communication_logs?.length > 0 ? (
-                      dashboardData.communication_logs.slice(0, 4).map((log, index) => (
-                        <li key={index} className="py-2 border-b border-gray-100 last:border-0 hover:bg-gray-50 px-2 rounded-lg transition-colors">
-                          <div className="flex justify-between items-start mb-1">
-                            <div className="flex items-center">
-                              <div className={`p-1 rounded mr-2 ${
-                                log.type === 'reminder' ? 'bg-blue-100 text-blue-600' :
-                                log.type === 'payment' ? 'bg-emerald-100 text-emerald-600' :
-                                'bg-gray-100 text-gray-600'
-                              }`}>
-                                {log.type === 'reminder' ? <FiClock className="w-3 h-3" /> :
-                                 log.type === 'payment' ? <FiUser className="w-3 h-3" /> :
-                                 <FiTag className="w-3 h-3" />}
-                              </div>
-                              <span className="font-medium text-gray-800">{log.customer || 'Unknown'}</span>
-                            </div>
-                            <span className="text-xs text-gray-500">{log.time || 'Unknown time'}</span>
-                          </div>
-                          <p className="text-sm text-gray-600 ml-7">{log.message || 'No message content'}</p>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-gray-500 py-2">No communication logs available</li>
-                    )}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </ErrorBoundary>
-        )}
       </div>
     </div>
   );
-}
+};
 
 export default BusinessOwnerDashboard;

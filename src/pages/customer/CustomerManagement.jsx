@@ -37,14 +37,17 @@ const CustomerManagement = () => {
 
   // Filter and sort customers
   useEffect(() => {
-    let result = [...customers];
+    // Ensure customers is always an array
+    const customersArray = Array.isArray(customers) ? customers : [];
+    
+    let result = [...customersArray];
     
     // Apply search filter
     if (searchTerm) {
       result = result.filter(customer => 
-        customer.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.phone.includes(searchTerm) ||
-        customer.id_number.includes(searchTerm)
+        customer.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.phone?.includes(searchTerm) ||
+        customer.id_number?.includes(searchTerm)
       );
     }
     
@@ -60,8 +63,10 @@ const CustomerManagement = () => {
 
   // Fetch customers on component mount
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && token) {
       fetchCustomers();
+    } else {
+      setLoading(false);
     }
   }, [isAuthenticated, token]);
 
@@ -71,11 +76,14 @@ const CustomerManagement = () => {
       const response = await axios.get(`${API_BASE_URL}/customers`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setCustomers(response.data);
+      // Ensure we always set an array, even if response.data is null/undefined
+      setCustomers(Array.isArray(response.data) ? response.data : []);
       setError('');
     } catch (err) {
       console.error('Error fetching customers:', err);
       setError(err.response?.data?.message || 'Failed to fetch customers');
+      // Set to empty array on error
+      setCustomers([]);
     } finally {
       setLoading(false);
     }
@@ -145,10 +153,10 @@ const CustomerManagement = () => {
   const handleEdit = (customer) => {
     setEditingCustomer(customer);
     setFormData({
-      customer_name: customer.customer_name,
-      phone: customer.phone,
-      id_number: customer.id_number,
-      business_id: customer.business_id
+      customer_name: customer.customer_name || '',
+      phone: customer.phone || '',
+      id_number: customer.id_number || '',
+      business_id: customer.business_id || user?.business_id || user?.owned_businesses?.[0]?.id || ''
     });
     setOpenDialog(true);
   };
