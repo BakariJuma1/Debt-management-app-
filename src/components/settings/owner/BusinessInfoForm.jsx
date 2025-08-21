@@ -152,48 +152,35 @@ function BusinessInfoForm({ isInSidebar = false }) {
 
       console.log('Sending to backend:', backendPayload);
       
-      let response;
-      if (isCreating) {
-        // CREATE business
-        response = await axios.post(`${API_BASE_URL}/businesses`, backendPayload, {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      } else {
-        // UPDATE business
-        response = await axios.put(`${API_BASE_URL}/businesses/${business.id}`, backendPayload, {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
+      const response = await axios.post(`${API_BASE_URL}/businesses`, backendPayload, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       
-      console.log('Business operation successful:', response.data);
-      
-      if (isCreating) {
-        await handleBusinessCreationSuccess(response.data);
-      }
+      console.log('Business created:', response.data);
+      await handleBusinessCreationSuccess(response.data);
       
       // Update business state with only the necessary fields
-      const businessData = {
-        id: response.data.business?.id || response.data.id,
-        name: response.data.business?.name || response.data.name,
-        address: response.data.business?.address || response.data.address,
-        phone: response.data.business?.phone || response.data.phone,
-        email: response.data.business?.email || response.data.email,
-        website: response.data.business?.website || response.data.website,
-        description: response.data.business?.description || response.data.description,
-      };
+      if (response.data.business) {
+        const businessData = {
+          id: response.data.business.id,
+          name: response.data.business.name,
+          address: response.data.business.address,
+          phone: response.data.business.phone,
+          email: response.data.business.email,
+          website: response.data.business.website,
+          description: response.data.business.description,
+        };
+        setBusiness(businessData);
+      }
       
-      setBusiness(businessData);
       setIsBusinessModalOpen(false);
       setIsCreating(false);
       
     } catch (err) {
-      console.error('Business operation failed:', err);
+      console.error('Business creation failed:', err);
       
       // Show detailed validation errors from backend
       if (err.response?.data?.errors) {
@@ -202,8 +189,7 @@ function BusinessInfoForm({ isInSidebar = false }) {
           .join('; ');
         setError({type: 'error', message: errorMessages});
       } else {
-        setError({type: 'error', message: err.response?.data?.message || 
-          (isCreating ? "Failed to create business" : "Failed to update business")});
+        setError({type: 'error', message: err.response?.data?.message || "Failed to create business"});
       }
     } finally {
       setLoading(prev => ({ ...prev, business: false }));
