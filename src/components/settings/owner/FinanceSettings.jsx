@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
 import API_BASE_URL from '../../../api';
+import { useAuth } from '../../../AuthProvider';
 
 export default function FinanceSettings() {
   const navigate = useNavigate();
+  const { token } = useAuth();
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currencies, setCurrencies] = useState([]);
   const [formErrors, setFormErrors] = useState({});
   const [currentBusiness, setCurrentBusiness] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const fetchBusinessAndSettings = async () => {
@@ -21,38 +24,36 @@ export default function FinanceSettings() {
         // 1. Get the user's business
         const businessRes = await axios.get(`${API_BASE_URL}/business/my`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${token}`
           }
         });
         
-        if (!businessRes.data) {
-          throw new Error('No business found');
+        console.log('Business response:', businessRes.data);
+        
+        if (!businessRes.data.businesses || businessRes.data.businesses.length === 0) {
+          toast.error('No business found. Please create a business first.');
+          setLoading(false);
+          return;
         }
         
-        setCurrentBusiness(businessRes.data);
+        const businessData = businessRes.data.businesses[0];
+        setCurrentBusiness(businessData);
         
         // 2. Get the finance settings for this business
-        const settingsRes = await axios.get(
-          `${API_BASE_URL}/settings/${businessRes.data.id}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+        try {
+          const settingsRes = await axios.get(
+            `${API_BASE_URL}/settings/${businessData.id}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
             }
-          }
-        );
-        
-        setSettings(settingsRes.data);
-        
-        // 3. Get available currencies
-        const currenciesRes = await axios.get(`${API_BASE_URL}/currencies`);
-        setCurrencies(currenciesRes.data.currencies || currenciesRes.data);
-        
-      } catch (error) {
-        console.error('Error loading data:', error);
-        
-        if (error.response?.status === 404) {
-          // Settings don't exist, create defaults
-          try {
+          );
+          
+          setSettings(settingsRes.data);
+        } catch (settingsError) {
+          if (settingsError.response?.status === 404) {
+            // Settings don't exist, create defaults
             const defaultSettings = {
               default_currency: 'USD',
               payment_due_day: 1,
@@ -69,30 +70,67 @@ export default function FinanceSettings() {
             };
             
             const createRes = await axios.post(
-              `${API_BASE_URL}/settings/${currentBusiness?.id}`,
-              defaultSettings,
+              `${API_BASE_URL}/settings`,
+              {
+                ...defaultSettings,
+                business_id: businessData.id
+              },
               {
                 headers: {
-                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                  'Authorization': `Bearer ${token}`
                 }
               }
             );
             
             setSettings(createRes.data);
             toast.success('Default settings created');
-          } catch (createError) {
-            toast.error('Failed to create default settings');
+          } else {
+            throw settingsError;
           }
+        }
+        
+        // 3. Get available currencies (with error handling)
+        try {
+          const currenciesRes = await axios.get(`${API_BASE_URL}/currencies`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          setCurrencies(currenciesRes.data.currencies || currenciesRes.data || []);
+        } catch (currenciesError) {
+          console.warn('Could not load currencies, using defaults', currenciesError);
+          // Fallback to common currencies
+          setCurrencies([
+            { code: 'USD', name: 'US Dollar' },
+            { code: 'EUR', name: 'Euro' },
+            { code: 'GBP', name: 'British Pound' },
+            { code: 'JPY', name: 'Japanese Yen' },
+            { code: 'CAD', name: 'Canadian Dollar' },
+            { code: 'AUD', name: 'Australian Dollar' }
+          ]);
+        }
+        
+      } catch (error) {
+        console.error('Error loading data:', error);
+        
+        if (error.code === 'ERR_NETWORK') {
+          toast.error('Network error. Please check your connection and try again.');
+        } else if (error.response?.status === 401) {
+          toast.error('Session expired. Please log in again.');
+        } else if (error.response?.status === 404) {
+          toast.error('Settings endpoint not found. Please check your API configuration.');
         } else {
-          toast.error('Failed to load finance data');
+          toast.error('Failed to load finance data. Please try again later.');
         }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchBusinessAndSettings();
-  }, []);
+    if (token) {
+      fetchBusinessAndSettings();
+    }
+  }, [token]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -151,14 +189,14 @@ export default function FinanceSettings() {
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
       
       const response = await axios.put(
         `${API_BASE_URL}/settings/${currentBusiness.id}`,
         settings,
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }
@@ -168,9 +206,16 @@ export default function FinanceSettings() {
       setSettings(response.data);
     } catch (error) {
       console.error('Error updating settings:', error);
-      toast.error(error.response?.data?.message || 'Failed to update settings');
+      
+      if (error.code === 'ERR_NETWORK') {
+        toast.error('Network error. Please check your connection and try again.');
+      } else if (error.response?.status === 404) {
+        toast.error('Settings endpoint not found. Please check your API configuration.');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to update settings');
+      }
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -178,37 +223,79 @@ export default function FinanceSettings() {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <span className="ml-4 text-gray-600">Loading settings...</span>
+      </div>
+    );
+  }
+
+  if (!currentBusiness) {
+    return (
+      <div className="max-w-4xl mx-auto p-4 text-center py-10">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">No Business Found</h2>
+          <p className="text-gray-600 mb-6">You need to create a business before configuring finance settings.</p>
+          <button 
+            onClick={() => navigate('/settings/business')} 
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Create Business
+          </button>
+        </div>
       </div>
     );
   }
 
   if (!settings) {
     return (
-      <div className="text-center py-10">
-        <p className="text-red-500">Failed to load finance settings</p>
-        <button 
-          onClick={() => window.location.reload()} 
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Retry
-        </button>
+      <div className="max-w-4xl mx-auto p-4 text-center py-10">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Failed to Load Settings</h2>
+          <p className="text-gray-600 mb-6">There was an error loading your finance settings.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors mr-4"
+          >
+            Try Again
+          </button>
+          <button 
+            onClick={() => navigate('/settings')} 
+            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Back to Settings
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="max-w-4xl mx-auto p-4">
-      <h2 className="text-2xl font-semibold mb-6">
-        Finance Settings for {currentBusiness?.name || 'Your Business'}
-      </h2>
+      <div className="mb-6">
+        <button 
+          onClick={() => navigate(-1)}
+          className="flex items-center text-blue-600 hover:text-blue-800 mb-4"
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back
+        </button>
+        
+        <h2 className="text-2xl font-semibold text-gray-800">
+          Finance Settings for {currentBusiness.name}
+        </h2>
+        <p className="text-gray-600 mt-2">
+          Configure payment terms, late fees, and reminders for your business.
+        </p>
+      </div>
       
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Currency Settings */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-medium mb-4">Currency Settings</h3>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Currency Settings</h3>
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <label htmlFor="default_currency" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="default_currency" className="block text-sm font-medium text-gray-700 mb-2">
                 Default Currency
               </label>
               <select
@@ -216,7 +303,7 @@ export default function FinanceSettings() {
                 name="default_currency"
                 value={settings.default_currency || 'USD'}
                 onChange={handleChange}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               >
                 {currencies.map((currency) => (
                   <option key={currency.code} value={currency.code}>
@@ -232,11 +319,11 @@ export default function FinanceSettings() {
         </div>
 
         {/* Payment Terms */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-medium mb-4">Payment Terms</h3>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Terms</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="payment_due_day" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="payment_due_day" className="block text-sm font-medium text-gray-700 mb-2">
                 Payment Due Day (of month)
               </label>
               <input
@@ -247,14 +334,15 @@ export default function FinanceSettings() {
                 max="31"
                 value={settings.payment_due_day || 1}
                 onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               />
               {formErrors.payment_due_day && (
                 <p className="mt-1 text-sm text-red-600">{formErrors.payment_due_day}</p>
               )}
+              <p className="mt-1 text-xs text-gray-500">Day of the month when payments are due (1-31)</p>
             </div>
             <div>
-              <label htmlFor="grace_period_days" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="grace_period_days" className="block text-sm font-medium text-gray-700 mb-2">
                 Grace Period (days)
               </label>
               <input
@@ -265,21 +353,22 @@ export default function FinanceSettings() {
                 max="30"
                 value={settings.grace_period_days || 0}
                 onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               />
               {formErrors.grace_period_days && (
                 <p className="mt-1 text-sm text-red-600">{formErrors.grace_period_days}</p>
               )}
+              <p className="mt-1 text-xs text-gray-500">Number of days after due date before late fees apply</p>
             </div>
           </div>
         </div>
 
         {/* Late Fee Rules */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-medium mb-4">Late Fee Rules</h3>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Late Fee Rules</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="late_fee_type" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="late_fee_type" className="block text-sm font-medium text-gray-700 mb-2">
                 Late Fee Type
               </label>
               <select
@@ -287,15 +376,15 @@ export default function FinanceSettings() {
                 name="late_fee_type"
                 value={settings.late_fee_type || 'percentage'}
                 onChange={handleChange}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               >
                 <option value="percentage">Percentage</option>
                 <option value="fixed">Fixed Amount</option>
               </select>
             </div>
             <div>
-              <label htmlFor="late_fee_value" className="block text-sm font-medium text-gray-700">
-                {settings.late_fee_type === 'percentage' ? 'Late Fee Percentage' : 'Late Fee Amount'}
+              <label htmlFor="late_fee_value" className="block text-sm font-medium text-gray-700 mb-2">
+                {settings.late_fee_type === 'percentage' ? 'Late Fee Percentage (%)' : 'Late Fee Amount'}
               </label>
               <input
                 type="number"
@@ -305,14 +394,14 @@ export default function FinanceSettings() {
                 step="0.01"
                 value={settings.late_fee_value || 0}
                 onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               />
               {formErrors.late_fee_value && (
                 <p className="mt-1 text-sm text-red-600">{formErrors.late_fee_value}</p>
               )}
             </div>
             <div>
-              <label htmlFor="late_fee_max" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="late_fee_max" className="block text-sm font-medium text-gray-700 mb-2">
                 Maximum Late Fee (0 for no max)
               </label>
               <input
@@ -323,20 +412,20 @@ export default function FinanceSettings() {
                 step="0.01"
                 value={settings.late_fee_max || 0}
                 onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               />
               {formErrors.late_fee_max && (
                 <p className="mt-1 text-sm text-red-600">{formErrors.late_fee_max}</p>
               )}
             </div>
-            <div className="flex items-center">
+            <div className="flex items-start pt-6">
               <input
                 type="checkbox"
                 id="late_fee_recurring"
                 name="late_fee_recurring"
                 checked={settings.late_fee_recurring || false}
                 onChange={handleChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
               />
               <label htmlFor="late_fee_recurring" className="ml-2 block text-sm text-gray-700">
                 Recurring Late Fee (charge every period)
@@ -346,18 +435,18 @@ export default function FinanceSettings() {
         </div>
 
         {/* Payment Reminders */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-medium mb-4">Payment Reminders</h3>
-          <div className="grid grid-cols-1 gap-4">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Reminders</h3>
+          <div className="grid grid-cols-1 gap-6">
             <div className="space-y-4">
-              <div className="flex items-center">
+              <div className="flex items-start">
                 <input
                   type="checkbox"
                   id="reminder_before_due"
                   name="reminder_before_due"
                   checked={settings.reminder_before_due || false}
                   onChange={handleChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
                 />
                 <label htmlFor="reminder_before_due" className="ml-2 block text-sm text-gray-700">
                   Send reminder before due date
@@ -365,7 +454,7 @@ export default function FinanceSettings() {
               </div>
               {settings.reminder_before_due && (
                 <div className="ml-6">
-                  <label htmlFor="reminder_before_days" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="reminder_before_days" className="block text-sm font-medium text-gray-700 mb-2">
                     Days before due date to send reminder
                   </label>
                   <input
@@ -376,7 +465,7 @@ export default function FinanceSettings() {
                     max="30"
                     value={settings.reminder_before_days || 3}
                     onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
                   {formErrors.reminder_before_days && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.reminder_before_days}</p>
@@ -386,14 +475,14 @@ export default function FinanceSettings() {
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center">
+              <div className="flex items-start">
                 <input
                   type="checkbox"
                   id="reminder_after_due"
                   name="reminder_after_due"
                   checked={settings.reminder_after_due || false}
                   onChange={handleChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
                 />
                 <label htmlFor="reminder_after_due" className="ml-2 block text-sm text-gray-700">
                   Send reminder after due date
@@ -401,7 +490,7 @@ export default function FinanceSettings() {
               </div>
               {settings.reminder_after_due && (
                 <div className="ml-6">
-                  <label htmlFor="reminder_after_days" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="reminder_after_days" className="block text-sm font-medium text-gray-700 mb-2">
                     Days after due date to send reminder
                   </label>
                   <input
@@ -412,7 +501,7 @@ export default function FinanceSettings() {
                     max="30"
                     value={settings.reminder_after_days || 1}
                     onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
                   {formErrors.reminder_after_days && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.reminder_after_days}</p>
@@ -422,7 +511,7 @@ export default function FinanceSettings() {
             </div>
 
             <div>
-              <label htmlFor="reminder_method" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="reminder_method" className="block text-sm font-medium text-gray-700 mb-2">
                 Reminder Method
               </label>
               <select
@@ -430,7 +519,7 @@ export default function FinanceSettings() {
                 name="reminder_method"
                 value={settings.reminder_method || 'email'}
                 onChange={handleChange}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               >
                 <option value="email">Email</option>
                 <option value="sms">SMS</option>
@@ -440,20 +529,30 @@ export default function FinanceSettings() {
           </div>
         </div>
 
-        <div className="flex justify-end space-x-4">
+        <div className="flex justify-end space-x-4 pt-6">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-            disabled={loading}
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center"
+            disabled={saving}
           >
-            {loading ? 'Saving...' : 'Save Settings'}
+            {saving ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Saving...
+              </>
+            ) : (
+              'Save Settings'
+            )}
           </button>
         </div>
       </form>

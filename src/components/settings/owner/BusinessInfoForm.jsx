@@ -57,27 +57,31 @@ function BusinessInfoForm({ isInSidebar = false }) {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      if (response.data) {
+      // Check if the response contains businesses array with at least one business
+      if (response.data.businesses && response.data.businesses.length > 0) {
+        // Get the first business (assuming owner has only one business)
+        const businessData = response.data.businesses[0];
+        
         // Only store the fields we need for display
-        const businessData = {
-          id: response.data.business.id,
-          name: response.data.business.name,
-          address: response.data.business.address,
-          phone: response.data.business.phone,
-          email: response.data.business.email,
-          website: response.data.business.website,
-          description: response.data.business.description,
+        const formattedBusinessData = {
+          id: businessData.id,
+          name: businessData.name || "",
+          address: businessData.address || "",
+          phone: businessData.phone || "",
+          email: businessData.email || "",
+          website: businessData.website || "",
+          description: businessData.description || "",
         };
         
-        setBusiness(businessData);
+        setBusiness(formattedBusinessData);
 
         setBusinessForm({
-          name: response.data.name || "",
-          address: response.data.address || "",
-          phone: response.data.phone || "",
-          email: response.data.email || "",
-          website: response.data.website || "",
-          description: response.data.description || "",
+          name: businessData.name || "",
+          address: businessData.address || "",
+          phone: businessData.phone || "",
+          email: businessData.email || "",
+          website: businessData.website || "",
+          description: businessData.description || "",
         });
 
         setIsCreating(false);
@@ -143,9 +147,9 @@ function BusinessInfoForm({ isInSidebar = false }) {
       // Create a payload with only the fields the backend expects
       const backendPayload = {
         name: cleanedForm.name,
-        address: cleanedForm.address,
-        phone: cleanedForm.phone,
-        email: cleanedForm.email,
+        address: cleanedForm.address || null,
+        phone: cleanedForm.phone || null,
+        email: cleanedForm.email || null,
         website: cleanedForm.website || null,
         description: cleanedForm.description || null,
       };
@@ -164,16 +168,17 @@ function BusinessInfoForm({ isInSidebar = false }) {
       
       // Update business state with only the necessary fields
       if (response.data.business) {
-        const businessData = {
-          id: response.data.business.id,
-          name: response.data.business.name,
-          address: response.data.business.address,
-          phone: response.data.business.phone,
-          email: response.data.business.email,
-          website: response.data.business.website,
-          description: response.data.business.description,
+        const businessData = response.data.business;
+        const formattedBusinessData = {
+          id: businessData.id,
+          name: businessData.name,
+          address: businessData.address,
+          phone: businessData.phone,
+          email: businessData.email,
+          website: businessData.website,
+          description: businessData.description,
         };
-        setBusiness(businessData);
+        setBusiness(formattedBusinessData);
       }
       
       setIsBusinessModalOpen(false);

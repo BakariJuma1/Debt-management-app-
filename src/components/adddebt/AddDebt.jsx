@@ -48,14 +48,27 @@ function AddDebt() {
               "Authorization": `Bearer ${localStorage.getItem('token')}`
             }
           });
-          const businessesData = Array.isArray(response.data) ? response.data : [];
+          
+          // Handle different possible response structures
+          let businessesData = [];
+          
+          if (Array.isArray(response.data)) {
+            businessesData = response.data;
+          } else if (response.data && Array.isArray(response.data.businesses)) {
+            businessesData = response.data.businesses;
+          } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+            businessesData = response.data.data;
+          }
+          
           setBusinesses(businessesData);
           
           if (businessesData.length > 0) {
             setFormData(prev => ({
               ...prev,
-              businessId: businessesData[0].id
+              businessId: businessesData[0].id || businessesData[0]._id
             }));
+          } else {
+            setBusinessError("No businesses found. Please create a business first.");
           }
         } else {
           response = await axios.get(`${API_BASE_URL}/business/my`, {
@@ -63,19 +76,41 @@ function AddDebt() {
               "Authorization": `Bearer ${localStorage.getItem('token')}`
             }
           });
-          const businessData = response.data ? [response.data] : [];
+          
+          // Handle different possible response structures for single business
+          let businessData = [];
+          
+          if (response.data) {
+            if (Array.isArray(response.data)) {
+              businessData = response.data;
+            } else if (response.data.business) {
+              businessData = [response.data.business];
+            } else if (response.data.data) {
+              businessData = [response.data.data];
+            } else {
+              businessData = [response.data];
+            }
+          }
+          
           setBusinesses(businessData);
           
           if (businessData.length > 0) {
+            const businessId = businessData[0].id || businessData[0]._id;
             setFormData(prev => ({
               ...prev,
-              businessId: businessData[0].id
+              businessId: businessId
             }));
+          } else {
+            setBusinessError("No business assigned to you. Please contact your administrator.");
           }
         }
       } catch (err) {
         console.error("Error fetching businesses:", err);
-        setBusinessError("Failed to load business information");
+        if (err.response?.status === 404) {
+          setBusinessError("No business found. Please create a business first.");
+        } else {
+          setBusinessError("Failed to load business information. Please try again.");
+        }
       } finally {
         setLoadingBusinesses(false);
       }
@@ -190,7 +225,7 @@ function AddDebt() {
           name: item.name,
           quantity: parseFloat(item.quantity),
           price: parseFloat(item.price),
-          category: item.category // Include category in payload
+          category: item.category
         })),
         due_date: formData.dueDate || null,
         amount_paid: amountPaid,
@@ -228,7 +263,7 @@ function AddDebt() {
 
   return (
     <Layout>
-      <div className="container mx-auto p-4 max-w-6xl ml-10 mt-12" >
+      <div className="container mx-auto p-4 max-w-6xl ml-10 mt-12">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">Add New Debt</h1>
 
         {error && (
@@ -251,34 +286,34 @@ function AddDebt() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Business Selection */}
-          {!loadingBusinesses && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Business</h2>
-              {businesses.length > 0 ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Business *
-                  </label>
-                  <select
-                    name="businessId"
-                    value={formData.businessId}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  >
-                    <option value="">Select a business</option>
-                    {businesses.map(business => (
-                      <option key={business.id} value={business.id}>
-                        {business.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <p className="text-red-500">No business available. Please create a business first.</p>
-              )}
-            </div>
-          )}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Business</h2>
+            {loadingBusinesses ? (
+              <p>Loading businesses...</p>
+            ) : businesses.length > 0 ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Business *
+                </label>
+                <select
+                  name="businessId"
+                  value={formData.businessId}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">Select a business</option>
+                  {businesses.map(business => (
+                    <option key={business.id || business._id} value={business.id || business._id}>
+                      {business.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <p className="text-red-500">{businessError || "No business available. Please create a business first."}</p>
+            )}
+          </div>
 
           {/* Customer Information Section */}
           <div className="bg-white rounded-lg shadow p-6">
@@ -513,7 +548,7 @@ function AddDebt() {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || loadingBusinesses || !formData.businessId}
+              disabled={isSubmitting || loadingBusinesses || businesses.length === 0}
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? "Submitting..." : "Create Debt"}
