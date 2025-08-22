@@ -76,8 +76,10 @@ const CustomerManagement = () => {
       const response = await axios.get(`${API_BASE_URL}/customers`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Ensure we always set an array, even if response.data is null/undefined
-      setCustomers(Array.isArray(response.data) ? response.data : []);
+      
+      // FIXED: Handle the response structure { customers: [...] }
+      const customersData = response.data?.customers || [];
+      setCustomers(Array.isArray(customersData) ? customersData : []);
       setError('');
     } catch (err) {
       console.error('Error fetching customers:', err);
@@ -133,7 +135,7 @@ const CustomerManagement = () => {
         setSuccess('Customer updated successfully');
       } else {
         // Create new customer
-        await axios.post(
+        const response = await axios.post(
           `${API_BASE_URL}/customers`,
           formData,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -728,7 +730,7 @@ const CustomerManagement = () => {
                   <button
                     onClick={() => setDeleteConfirm(false)}
                     className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition duration-150"
-                  >
+                    >
                     Cancel
                   </button>
                   <button
