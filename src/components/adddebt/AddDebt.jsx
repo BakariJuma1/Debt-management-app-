@@ -10,6 +10,7 @@ function AddDebt() {
   const [businesses, setBusinesses] = useState([]);
   const [loadingBusinesses, setLoadingBusinesses] = useState(false);
   const [businessError, setBusinessError] = useState(null);
+  const [hasBusinessAssigned, setHasBusinessAssigned] = useState(false);
 
   const initialFormData = {
     customerName: "",
@@ -41,15 +42,14 @@ function AddDebt() {
       setBusinessError(null);
       
       try {
-        let response;
         if (user?.role === 'owner') {
-          response = await axios.get(`${API_BASE_URL}/businesses`, {
+          // Owners need to select a business
+          const response = await axios.get(`${API_BASE_URL}/businesses`, {
             headers: { 
               "Authorization": `Bearer ${localStorage.getItem('token')}`
             }
           });
           
-          // Handle different possible response structures
           let businessesData = [];
           
           if (Array.isArray(response.data)) {
@@ -71,37 +71,34 @@ function AddDebt() {
             setBusinessError("No businesses found. Please create a business first.");
           }
         } else {
-          response = await axios.get(`${API_BASE_URL}/business/my`, {
+          // For non-owners, just check if they have a business assigned
+          const response = await axios.get(`${API_BASE_URL}/business/my`, {
             headers: { 
               "Authorization": `Bearer ${localStorage.getItem('token')}`
             }
           });
           
-          // Handle different possible response structures for single business
-          let businessData = [];
+          let businessData = null;
           
           if (response.data) {
             if (Array.isArray(response.data)) {
-              businessData = response.data;
+              businessData = response.data[0];
             } else if (response.data.business) {
-              businessData = [response.data.business];
+              businessData = response.data.business;
             } else if (response.data.data) {
-              businessData = [response.data.data];
+              businessData = response.data.data;
             } else {
-              businessData = [response.data];
+              businessData = response.data;
             }
           }
           
-          setBusinesses(businessData);
-          
-          if (businessData.length > 0) {
-            const businessId = businessData[0].id || businessData[0]._id;
-            setFormData(prev => ({
-              ...prev,
-              businessId: businessId
-            }));
+          if (businessData) {
+            setHasBusinessAssigned(true);
+            setBusinesses([businessData]);
+            // Don't set businessId in formData for non-owners - backend handles it
           } else {
             setBusinessError("No business assigned to you. Please contact your administrator.");
+            setHasBusinessAssigned(false);
           }
         }
       } catch (err) {
@@ -111,6 +108,7 @@ function AddDebt() {
         } else {
           setBusinessError("Failed to load business information. Please try again.");
         }
+        setHasBusinessAssigned(false);
       } finally {
         setLoadingBusinesses(false);
       }
@@ -175,8 +173,14 @@ function AddDebt() {
       return false;
     }
 
-    if (!formData.businessId) {
+    // Business validation based on user role
+    if (user?.role === 'owner' && !formData.businessId) {
       setError("Business selection is required");
+      return false;
+    }
+
+    if (user?.role !== 'owner' && !hasBusinessAssigned) {
+      setError("No business assigned to you. Please contact your administrator.");
       return false;
     }
 
@@ -206,6 +210,7 @@ function AddDebt() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (!validateForm()) return;
 
     setIsSubmitting(true);
@@ -216,11 +221,11 @@ function AddDebt() {
       const amountPaid = parseFloat(formData.amountPaid) || 0;
       const balance = calculateBalance();
       
+      // Create payload - backend will handle business_id automatically
       const payload = {
         customer_name: formData.customerName,
         phone: formData.phone,
         id_number: formData.idNumber,
-        business_id: formData.businessId,
         items: formData.items.map(item => ({
           name: item.name,
           quantity: parseFloat(item.quantity),
@@ -233,6 +238,11 @@ function AddDebt() {
         balance: balance,
         receipt: formData.receipt || ""
       };
+
+      // Only include business_id for owners (who need to select which business)
+      if (user?.role === 'owner') {
+        payload.business_id = formData.businessId;
+      }
 
       const { data } = await axios.post(`${API_BASE_URL}/debts`, payload, {
         headers: { 
@@ -261,6 +271,11 @@ function AddDebt() {
   const totalAmount = calculateTotal();
   const balance = calculateBalance();
 
+  // Check if form can be submitted
+  const canSubmit = !loadingBusinesses && 
+                   !isSubmitting && 
+                   (user?.role === 'owner' ? businesses.length > 0 && formData.businessId : hasBusinessAssigned);
+
   return (
     <Layout>
       <div className="container mx-auto p-4 max-w-6xl ml-10 mt-12">
@@ -285,35 +300,52 @@ function AddDebt() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Business Selection */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Business</h2>
-            {loadingBusinesses ? (
-              <p>Loading businesses...</p>
-            ) : businesses.length > 0 ? (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Business *
-                </label>
-                <select
-                  name="businessId"
-                  value={formData.businessId}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">Select a business</option>
-                  {businesses.map(business => (
-                    <option key={business.id || business._id} value={business.id || business._id}>
-                      {business.name}
-                    </option>
-                  ))}
-                </select>
+          {/* Business Information - Only show for owners */}
+          {user?.role === 'owner' && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Business</h2>
+              {loadingBusinesses ? (
+                <p>Loading businesses...</p>
+              ) : businesses.length > 0 ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Business *
+                  </label>
+                  <select
+                    name="businessId"
+                    value={formData.businessId}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">Select a business</option>
+                    {businesses.map(business => (
+                      <option key={business.id || business._id} value={business.id || business._id}>
+                        {business.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <p className="text-red-500">{businessError || "No business available. Please create a business first."}</p>
+              )}
+            </div>
+          )}
+
+          {/* Show business info for non-owners if available */}
+          {user?.role !== 'owner' && businesses.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Business</h2>
+              <div className="p-3 bg-gray-50 rounded-md">
+                <p className="text-gray-700">
+                  <span className="font-medium">Business:</span> {businesses[0].name}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  This debt will be automatically associated with your assigned business
+                </p>
               </div>
-            ) : (
-              <p className="text-red-500">{businessError || "No business available. Please create a business first."}</p>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Customer Information Section */}
           <div className="bg-white rounded-lg shadow p-6">
@@ -548,7 +580,7 @@ function AddDebt() {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || loadingBusinesses || businesses.length === 0}
+              disabled={isSubmitting || !canSubmit}
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? "Submitting..." : "Create Debt"}

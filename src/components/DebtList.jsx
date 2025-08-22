@@ -114,7 +114,7 @@ function DebtList() {
       {/* <Search handleSearch={handleSearch} /> */}
       <DebtTable 
         debts={debts} 
-        showActions={user.role === 'owner' || user.role === 'admin'} 
+        showActions={user.role === 'owner' || user.role === 'admin' || user.role === 'salesperson'} 
       />
     </div>
   );
