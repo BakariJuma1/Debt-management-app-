@@ -52,7 +52,7 @@ const Navbar = () => {
               <img 
                 src="/logo.png" 
                 alt="PaySync Logo" 
-                className="h-6 sm:h-8 w-auto mr-2" 
+                className="h-20 sm:h-24 w-auto " 
               />
               <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 PaySync
