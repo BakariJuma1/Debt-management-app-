@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FiPlus, FiEdit, FiTrash2, FiEye, FiX, FiSearch,
-  FiUser, FiPhone, FiCreditCard, FiBriefcase, FiUserCheck,
-  FiGrid, FiList, FiChevronDown, FiChevronUp, FiFilter
+  FiUser, FiPhone, FiCreditCard, FiDollarSign, FiCalendar,
+  FiMail, FiChevronDown, FiChevronUp, FiGrid, FiList
 } from 'react-icons/fi';
 import { useAuth } from '../../AuthProvider';
 import axios from 'axios';
@@ -16,33 +16,28 @@ const CustomerManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState(null);
-  const [viewingCustomer, setViewingCustomer] = useState(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const [customerToDelete, setCustomerToDelete] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState('card'); // 'card' or 'table'
+  const [viewMode, setViewMode] = useState('card');
   const [sortField, setSortField] = useState('customer_name');
   const [sortDirection, setSortDirection] = useState('asc');
   const [expandedCustomer, setExpandedCustomer] = useState(null);
-
-  // Form state
+  const [customerDebts, setCustomerDebts] = useState({});
+  const [loadingDebts, setLoadingDebts] = useState({});
+  const [sendingReminders, setSendingReminders] = useState({});
   const [formData, setFormData] = useState({
     customer_name: '',
     phone: '',
-    id_number: '',
-    business_id: user?.business_id || user?.owned_businesses?.[0]?.id || ''
+    id_number: ''
   });
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
 
   // Filter and sort customers
   useEffect(() => {
-    // Ensure customers is always an array
     const customersArray = Array.isArray(customers) ? customers : [];
     
     let result = [...customersArray];
     
-    // Apply search filter
     if (searchTerm) {
       result = result.filter(customer => 
         customer.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -51,7 +46,6 @@ const CustomerManagement = () => {
       );
     }
     
-    // Apply sorting
     result.sort((a, b) => {
       if (a[sortField] < b[sortField]) return sortDirection === 'asc' ? -1 : 1;
       if (a[sortField] > b[sortField]) return sortDirection === 'asc' ? 1 : -1;
@@ -77,18 +71,56 @@ const CustomerManagement = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      // FIXED: Handle the response structure { customers: [...] }
       const customersData = response.data?.customers || [];
       setCustomers(Array.isArray(customersData) ? customersData : []);
       setError('');
     } catch (err) {
       console.error('Error fetching customers:', err);
       setError(err.response?.data?.message || 'Failed to fetch customers');
-      // Set to empty array on error
       setCustomers([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Fetch customer debts for a specific customer
+  const fetchCustomerDebts = async (customerId) => {
+    try {
+      setLoadingDebts(prev => ({ ...prev, [customerId]: true }));
+      const response = await axios.get(`${API_BASE_URL}/customers/${customerId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      let debtsData = [];
+      if (Array.isArray(response.data)) {
+        debtsData = response.data;
+      } else if (response.data?.debts) {
+        debtsData = response.data.debts;
+      } else if (response.data) {
+        debtsData = [response.data];
+      }
+      
+      setCustomerDebts(prev => ({
+        ...prev,
+        [customerId]: debtsData
+      }));
+    } catch (err) {
+      console.error('Error fetching customer debts:', err);
+      setError(err.response?.data?.message || 'Failed to fetch customer debts');
+    } finally {
+      setLoadingDebts(prev => ({ ...prev, [customerId]: false }));
+    }
+  };
+
+  // Calculate debt balance
+  const calculateDebtBalance = (debt) => {
+    if (debt.balance !== undefined && debt.balance !== null) {
+      return debt.balance;
+    }
+    
+    const total = debt.total || 0;
+    const amountPaid = debt.amount_paid || 0;
+    return Math.max(0, total - amountPaid);
   };
 
   const handleInputChange = (e) => {
@@ -116,17 +148,16 @@ const CustomerManagement = () => {
     setFormData({
       customer_name: '',
       phone: '',
-      id_number: '',
-      business_id: user?.business_id || user?.owned_businesses?.[0]?.id || ''
+      id_number: ''
     });
     setEditingCustomer(null);
+    setShowAddForm(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editingCustomer) {
-        // Update existing customer
         await axios.put(
           `${API_BASE_URL}/customers/${editingCustomer.id}`,
           formData,
@@ -134,8 +165,7 @@ const CustomerManagement = () => {
         );
         setSuccess('Customer updated successfully');
       } else {
-        // Create new customer
-        const response = await axios.post(
+        await axios.post(
           `${API_BASE_URL}/customers`,
           formData,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -143,9 +173,8 @@ const CustomerManagement = () => {
         setSuccess('Customer created successfully');
       }
       
-      setOpenDialog(false);
       resetForm();
-      fetchCustomers(); // Refresh the list
+      fetchCustomers();
     } catch (err) {
       console.error('Error saving customer:', err);
       setError(err.response?.data?.message || 'Failed to save customer');
@@ -157,43 +186,58 @@ const CustomerManagement = () => {
     setFormData({
       customer_name: customer.customer_name || '',
       phone: customer.phone || '',
-      id_number: customer.id_number || '',
-      business_id: customer.business_id || user?.business_id || user?.owned_businesses?.[0]?.id || ''
+      id_number: customer.id_number || ''
     });
-    setOpenDialog(true);
+    setShowAddForm(true);
   };
 
-  const handleView = (customer) => {
-    setViewingCustomer(customer);
+  const handleDelete = async (customer) => {
+    if (window.confirm(`Are you sure you want to delete ${customer.customer_name}? This action cannot be undone.`)) {
+      try {
+        await axios.delete(
+          `${API_BASE_URL}/customers/${customer.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setSuccess('Customer deleted successfully');
+        fetchCustomers();
+      } catch (err) {
+        console.error('Error deleting customer:', err);
+        setError(err.response?.data?.message || 'Failed to delete customer');
+      }
+    }
   };
 
-  const handleDelete = (customer) => {
-    setCustomerToDelete(customer);
-    setDeleteConfirm(true);
-  };
-
-  const toggleExpand = (customerId) => {
+  const toggleExpand = async (customerId) => {
     if (expandedCustomer === customerId) {
       setExpandedCustomer(null);
     } else {
       setExpandedCustomer(customerId);
+      if (!customerDebts[customerId]) {
+        await fetchCustomerDebts(customerId);
+      }
     }
   };
 
-  const confirmDelete = async () => {
+  // Send reminder for a specific debt
+  const sendReminder = async (debtId, customerId) => {
     try {
-      await axios.delete(
-        `${API_BASE_URL}/customers/${customerToDelete.id}`,
+      setSendingReminders(prev => ({ ...prev, [debtId]: true }));
+      
+      await axios.post(
+        `${API_BASE_URL}/reminders/debts/${debtId}`,
+        {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setSuccess('Customer deleted successfully');
-      fetchCustomers(); // Refresh the list
+      
+      setSuccess('Reminder sent successfully');
+      
+      // Refresh customer debts
+      await fetchCustomerDebts(customerId);
     } catch (err) {
-      console.error('Error deleting customer:', err);
-      setError(err.response?.data?.message || 'Failed to delete customer');
+      console.error('Error sending reminder:', err);
+      setError(err.response?.data?.message || 'Failed to send reminder');
     } finally {
-      setDeleteConfirm(false);
-      setCustomerToDelete(null);
+      setSendingReminders(prev => ({ ...prev, [debtId]: false }));
     }
   };
 
@@ -203,6 +247,47 @@ const CustomerManagement = () => {
 
   const canDelete = () => {
     return user?.role === 'owner';
+  };
+
+  const formatCurrency = (amount, currency = 'KES') => {
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+    }).format(amount || 0).replace('KES', 'Ksh');
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  const getDebtStatus = (debt) => {
+    const balance = calculateDebtBalance(debt);
+    
+    if (balance <= 0) return 'Paid';
+    
+    const dueDate = debt.due_date;
+    if (!dueDate) return 'Pending';
+    
+    const today = new Date();
+    const due = new Date(dueDate);
+    
+    if (due < today) {
+      const diffDays = Math.ceil((today - due) / (1000 * 60 * 60 * 24));
+      return `Overdue by ${diffDays} days`;
+    }
+    
+    const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+    return `Due in ${diffDays} days`;
+  };
+
+  const getStatusColor = (status) => {
+    if (status.includes('Paid')) return 'bg-green-100 text-green-800';
+    if (status.includes('Overdue')) return 'bg-red-100 text-red-800';
+    if (status.includes('Due in')) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   if (loading) {
@@ -241,7 +326,7 @@ const CustomerManagement = () => {
               {canEdit() && (
                 <button
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center transition duration-200"
-                  onClick={() => setOpenDialog(true)}
+                  onClick={() => setShowAddForm(true)}
                 >
                   <FiPlus className="h-5 w-5 mr-2" />
                   Add Customer
@@ -305,6 +390,97 @@ const CustomerManagement = () => {
             </div>
           )}
 
+          {/* Add/Edit Customer Form */}
+          {showAddForm && (
+            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
+                </h2>
+                <button
+                  onClick={resetForm}
+                  className="text-gray-400 hover:text-gray-600 transition duration-150"
+                >
+                  <FiX className="h-5 w-5" />
+                </button>
+              </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Customer Name
+                  </label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FiUser className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      name="customer_name"
+                      value={formData.customer_name}
+                      onChange={handleInputChange}
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                      placeholder="Enter customer name"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number
+                  </label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FiPhone className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                      placeholder="Enter phone number"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ID Number
+                  </label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FiCreditCard className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      name="id_number"
+                      value={formData.id_number}
+                      onChange={handleInputChange}
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                      placeholder="Enter ID number"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition duration-150"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-150 flex items-center"
+                  >
+                    {editingCustomer ? 'Update Customer' : 'Add Customer'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
           {/* Customers Count and Sort */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
             <p className="text-gray-600 mb-2 sm:mb-0">
@@ -329,9 +505,9 @@ const CustomerManagement = () => {
             </div>
           </div>
 
-          {/* Customers Cards View (for mobile) */}
+          {/* Customers Cards View */}
           {viewMode === 'card' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
               {filteredCustomers.length === 0 ? (
                 <div className="col-span-full bg-white rounded-lg shadow-sm p-8 text-center">
                   <FiUser className="h-12 w-12 mx-auto text-gray-300 mb-4" />
@@ -341,84 +517,196 @@ const CustomerManagement = () => {
                   </p>
                 </div>
               ) : (
-                filteredCustomers.map((customer) => (
-                  <div key={customer.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                            <FiUser className="h-6 w-6 text-blue-600" />
+                filteredCustomers.map((customer) => {
+                  const debts = customerDebts[customer.id] || [];
+                  const totalBalance = debts.reduce((sum, debt) => sum + calculateDebtBalance(debt), 0);
+                  const outstandingDebts = debts.filter(debt => calculateDebtBalance(debt) > 0).length;
+                  
+                  return (
+                    <div key={customer.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-200 hover:shadow-md">
+                      <div className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                              <FiUser className="h-6 w-6 text-blue-600" />
+                            </div>
+                            <div className="ml-4">
+                              <h3 className="text-lg font-semibold text-gray-900">{customer.customer_name}</h3>
+                              <p className="text-sm text-gray-500 flex items-center mt-1">
+                                <FiPhone className="mr-2 h-4 w-4" /> {customer.phone}
+                              </p>
+                            </div>
                           </div>
-                          <div className="ml-4">
-                            <h3 className="text-lg font-medium text-gray-900">{customer.customer_name}</h3>
-                            <p className="text-sm text-gray-500 flex items-center">
-                              <FiPhone className="mr-1 h-4 w-4" /> {customer.phone}
-                            </p>
-                          </div>
+                          <button
+                            onClick={() => toggleExpand(customer.id)}
+                            className="text-gray-400 hover:text-gray-600 transition-colors duration-150"
+                          >
+                            {expandedCustomer === customer.id ? (
+                              <FiChevronUp className="h-5 w-5" />
+                            ) : (
+                              <FiChevronDown className="h-5 w-5" />
+                            )}
+                          </button>
                         </div>
-                        <button
-                          onClick={() => toggleExpand(customer.id)}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          {expandedCustomer === customer.id ? <FiChevronUp className="h-5 w-5" /> : <FiChevronDown className="h-5 w-5" />}
-                        </button>
-                      </div>
-                      
-                      {expandedCustomer === customer.id && (
-                        <div className="mt-4 pt-4 border-t border-gray-100">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="text-sm">
-                              <p className="text-gray-500">ID Number</p>
-                              <p className="text-gray-900">{customer.id_number}</p>
-                            </div>
-                            <div className="text-sm">
-                              <p className="text-gray-500">Business</p>
-                              <p className="text-gray-900">{customer.business?.business_name || 'N/A'}</p>
-                            </div>
+                        
+                        {/* Debt Summary */}
+                        <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium text-gray-700">Outstanding Balance</span>
+                            {outstandingDebts > 0 && (
+                              <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                {outstandingDebts} {outstandingDebts === 1 ? 'debt' : 'debts'}
+                              </span>
+                            )}
                           </div>
                           
-                          <div className="flex justify-end space-x-2 mt-4">
-                            <button
-                              onClick={() => handleView(customer)}
-                              className="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-50 transition duration-150"
-                              title="View customer"
-                            >
-                              <FiEye className="h-5 w-5" />
-                            </button>
+                          {outstandingDebts > 0 ? (
+                            <div>
+                              <p className="text-xl font-bold text-red-600">
+                                {formatCurrency(totalBalance)}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">Total outstanding balance</p>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-sm text-green-600 font-medium">No outstanding debts</p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Customer Details */}
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                          <div>
+                            <p className="text-gray-500">ID Number</p>
+                            <p className="text-gray-900 font-medium">{customer.id_number || 'N/A'}</p>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                          <div className="flex space-x-2">
                             {canEdit() && (
                               <button
                                 onClick={() => handleEdit(customer)}
-                                className="text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-50 transition duration-150"
+                                className="text-indigo-600 hover:text-indigo-800 p-2 rounded-full hover:bg-indigo-50 transition duration-150"
                                 title="Edit customer"
                               >
-                                <FiEdit className="h-5 w-5" />
+                                <FiEdit className="h-4 w-4" />
                               </button>
                             )}
                             {canDelete() && (
                               <button
                                 onClick={() => handleDelete(customer)}
-                                className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50 transition duration-150"
+                                className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-50 transition duration-150"
                                 title="Delete customer"
                               >
-                                <FiTrash2 className="h-5 w-5" />
+                                <FiTrash2 className="h-4 w-4" />
                               </button>
                             )}
                           </div>
+                          
+                          <button
+                            onClick={() => toggleExpand(customer.id)}
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+                          >
+                            {expandedCustomer === customer.id ? 'Hide Details' : 'View Details'}
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Expanded Debt Details */}
+                      {expandedCustomer === customer.id && (
+                        <div className="border-t border-gray-200 bg-gray-50 p-6">
+                          <h4 className="font-medium text-gray-900 mb-4 flex items-center">
+                            <FiDollarSign className="mr-2 h-4 w-4" />
+                            Debt Details
+                          </h4>
+                          
+                          {loadingDebts[customer.id] ? (
+                            <div className="flex justify-center items-center py-8">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                            </div>
+                          ) : debts.length === 0 ? (
+                            <div className="text-center py-4 text-gray-500">
+                              <FiDollarSign className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                              <p className="text-sm">No debts found for this customer</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {debts.map((debt) => {
+                                const balance = calculateDebtBalance(debt);
+                                const status = getDebtStatus(debt);
+                                
+                                return (
+                                  <div key={debt.id} className="bg-white rounded-lg p-4 shadow-xs border border-gray-100">
+                                    <div className="flex justify-between items-start mb-2">
+                                      <div>
+                                        <p className="font-medium text-gray-900">
+                                          INV-{debt.id.toString().padStart(5, '0')}
+                                        </p>
+                                        <p className="text-sm text-gray-600">Due: {formatDate(debt.due_date)}</p>
+                                      </div>
+                                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+                                        {status}
+                                      </span>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-4 text-sm mb-3">
+                                      <div>
+                                        <p className="text-gray-500">Total</p>
+                                        <p className="text-gray-900">{formatCurrency(debt.total || 0)}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-gray-500">Paid</p>
+                                        <p className="text-green-600">{formatCurrency(debt.amount_paid || 0)}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-gray-500">Balance</p>
+                                        <p className="text-red-600 font-bold">{formatCurrency(balance)}</p>
+                                      </div>
+                                    </div>
+                                    
+                                    {balance > 0 && (
+                                      <div className="flex justify-end">
+                                        <button
+                                          onClick={() => sendReminder(debt.id, customer.id)}
+                                          disabled={sendingReminders[debt.id]}
+                                          className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center disabled:opacity-50"
+                                        >
+                                          {sendingReminders[debt.id] ? (
+                                            <>
+                                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-indigo-600 mr-1"></div>
+                                              Sending...
+                                            </>
+                                          ) : (
+                                            <>
+                                              <FiMail className="mr-1 h-3 w-3" />
+                                              Send Reminder
+                                            </>
+                                          )}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
 
-          {/* Customers Table View (for larger screens) */}
+          {/* Customers Table View */}
           {viewMode === 'table' && (
             <div className="bg-white shadow-md rounded-lg overflow-hidden mb-6">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-100">
+                  <thead className="bg-gray-50">
                     <tr>
                       <th 
                         className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider cursor-pointer"
@@ -442,9 +730,15 @@ const CustomerManagement = () => {
                           )}
                         </div>
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">ID Number</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Business</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                        ID Number
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                        Outstanding Balance
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -461,286 +755,76 @@ const CustomerManagement = () => {
                         </td>
                       </tr>
                     ) : (
-                      filteredCustomers.map((customer) => (
-                        <tr key={customer.id} className="hover:bg-gray-50 transition duration-150">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <FiUser className="h-5 w-5 text-blue-600" />
+                      filteredCustomers.map((customer) => {
+                        const debts = customerDebts[customer.id] || [];
+                        const totalBalance = debts.reduce((sum, debt) => sum + calculateDebtBalance(debt), 0);
+                        
+                        return (
+                          <tr key={customer.id} className="hover:bg-gray-50 transition duration-150">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <FiUser className="h-5 w-5 text-blue-600" />
+                                </div>
+                                <div className="ml-4">
+                                  <div className="text-sm font-medium text-gray-900">{customer.customer_name}</div>
+                                </div>
                               </div>
-                              <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{customer.customer_name}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center text-sm text-gray-600">
+                                <FiPhone className="mr-2 h-4 w-4 text-gray-400" />
+                                {customer.phone}
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center text-sm text-gray-600">
-                              <FiPhone className="mr-2 h-4 w-4 text-gray-400" />
-                              {customer.phone}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center text-sm text-gray-600">
-                              <FiCreditCard className="mr-2 h-4 w-4 text-gray-400" />
-                              {customer.id_number}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              <FiBriefcase className="mr-1 h-3 w-3" />
-                              {customer.business?.business_name || 'N/A'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => handleView(customer)}
-                                className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50 transition duration-150"
-                                title="View customer"
-                              >
-                                <FiEye className="h-5 w-5" />
-                              </button>
-                              {canEdit() && (
-                                <button
-                                  onClick={() => handleEdit(customer)}
-                                  className="text-indigo-600 hover:text-indigo-900 p-1 rounded-full hover:bg-indigo-50 transition duration-150"
-                                  title="Edit customer"
-                                >
-                                  <FiEdit className="h-5 w-5" />
-                                </button>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center text-sm text-gray-600">
+                                <FiCreditCard className="mr-2 h-4 w-4 text-gray-400" />
+                                {customer.id_number || 'N/A'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {totalBalance > 0 ? (
+                                <span className="text-red-600 font-bold">{formatCurrency(totalBalance)}</span>
+                              ) : (
+                                <span className="text-green-600 font-medium">Paid</span>
                               )}
-                              {canDelete() && (
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
                                 <button
-                                  onClick={() => handleDelete(customer)}
-                                  className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50 transition duration-150"
-                                  title="Delete customer"
+                                  onClick={() => toggleExpand(customer.id)}
+                                  className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50 transition duration-150"
+                                  title="View details"
                                 >
-                                  <FiTrash2 className="h-5 w-5" />
+                                  <FiEye className="h-5 w-5" />
                                 </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                                {canEdit() && (
+                                  <button
+                                    onClick={() => handleEdit(customer)}
+                                    className="text-indigo-600 hover:text-indigo-900 p-1 rounded-full hover:bg-indigo-50 transition duration-150"
+                                    title="Edit customer"
+                                  >
+                                    <FiEdit className="h-5 w-5" />
+                                  </button>
+                                )}
+                                {canDelete() && (
+                                  <button
+                                    onClick={() => handleDelete(customer)}
+                                    className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50 transition duration-150"
+                                    title="Delete customer"
+                                  >
+                                    <FiTrash2 className="h-5 w-5" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
-              </div>
-            </div>
-          )}
-
-          {/* Add/Edit Customer Dialog */}
-          {openDialog && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-screen overflow-y-auto">
-                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-800">
-                    {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
-                  </h2>
-                  <button
-                    onClick={() => { setOpenDialog(false); resetForm(); }}
-                    className="text-gray-400 hover:text-gray-600 transition duration-150"
-                  >
-                    <FiX className="h-5 w-5" />
-                  </button>
-                </div>
-                <form onSubmit={handleSubmit}>
-                  <div className="px-6 py-4 space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Customer Name
-                      </label>
-                      <div className="relative rounded-md shadow-sm">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <FiUser className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <input
-                          type="text"
-                          name="customer_name"
-                          value={formData.customer_name}
-                          onChange={handleInputChange}
-                          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          required
-                          placeholder="Enter customer name"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone Number
-                      </label>
-                      <div className="relative rounded-md shadow-sm">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <FiPhone className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <input
-                          type="text"
-                          name="phone"
-                          value={formData.phone}
-                          onChange={handleInputChange}
-                          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          required
-                          placeholder="Enter phone number"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ID Number
-                      </label>
-                      <div className="relative rounded-md shadow-sm">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <FiCreditCard className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <input
-                          type="text"
-                          name="id_number"
-                          value={formData.id_number}
-                          onChange={handleInputChange}
-                          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          required
-                          placeholder="Enter ID number"
-                        />
-                      </div>
-                    </div>
-                    {(user?.role === 'owner' || user?.role === 'admin') && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Business
-                        </label>
-                        <div className="relative rounded-md shadow-sm">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <FiBriefcase className="h-5 w-5 text-gray-400" />
-                          </div>
-                          <select
-                            name="business_id"
-                            value={formData.business_id}
-                            onChange={handleInputChange}
-                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-                            required
-                          >
-                            {user?.owned_businesses?.map((business) => (
-                              <option key={business.id} value={business.id}>
-                                {business.business_name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                    <button
-                      type="button"
-                      onClick={() => { setOpenDialog(false); resetForm(); }}
-                      className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition duration-150"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-150 flex items-center"
-                    >
-                      {editingCustomer ? (
-                        <>
-                          <FiEdit className="mr-2 h-4 w-4" />
-                          Update
-                        </>
-                      ) : (
-                        <>
-                          <FiPlus className="mr-2 h-4 w-4" />
-                          Create
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* View Customer Dialog */}
-          {viewingCustomer && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-800">Customer Details</h2>
-                  <button
-                    onClick={() => setViewingCustomer(null)}
-                    className="text-gray-400 hover:text-gray-600 transition duration-150"
-                  >
-                    <FiX className="h-5 w-5" />
-                  </button>
-                </div>
-                <div className="px-6 py-4">
-                  <div className="flex items-center mb-6">
-                    <div className="flex-shrink-0 h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center">
-                      <FiUser className="h-8 w-8 text-blue-600" />
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-lg font-medium text-gray-900">{viewingCustomer.customer_name}</h3>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FiPhone className="mr-3 h-5 w-5 text-gray-400" />
-                      <span>{viewingCustomer.phone}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FiCreditCard className="mr-3 h-5 w-5 text-gray-400" />
-                      <span>{viewingCustomer.id_number}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FiBriefcase className="mr-3 h-5 w-5 text-gray-400" />
-                      <span>{viewingCustomer.business?.business_name || 'N/A'}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FiUserCheck className="mr-3 h-5 w-5 text-gray-400" />
-                      <span>Created by: {viewingCustomer.creator?.username || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
-                  <button
-                    onClick={() => setViewingCustomer(null)}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition duration-150"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Delete Confirmation Dialog */}
-          {deleteConfirm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold text-gray-800">Confirm Delete</h2>
-                </div>
-                <div className="px-6 py-4">
-                  <p className="text-gray-600">
-                    Are you sure you want to delete customer <span className="font-semibold">"{customerToDelete?.customer_name}"</span>? 
-                    This action cannot be undone.
-                  </p>
-                </div>
-                <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                  <button
-                    onClick={() => setDeleteConfirm(false)}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition duration-150"
-                    >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={confirmDelete}
-                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition duration-150 flex items-center"
-                  >
-                    <FiTrash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </button>
-                </div>
               </div>
             </div>
           )}
