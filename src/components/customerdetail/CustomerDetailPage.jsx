@@ -406,7 +406,11 @@ ${paymentList || "No payments yet."}
               <div>
                 <p className="text-xs md:text-sm text-gray-500">Amount Paid</p>
                 <p className="text-lg md:text-xl font-bold text-green-600">
-                  {formatCurrency(customer.amount_paid || 0)}
+                  {formatCurrency(
+                    payments
+                      .filter(p => p.method && p.method.toLowerCase() === "initial")
+                      .reduce((total, p) => total + p.amount, 0)
+                  )}
                 </p>
               </div>
             </div>
