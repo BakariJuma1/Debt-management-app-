@@ -8,11 +8,13 @@ import {
   FiPhone,
   FiFileText,
   FiTag,
+  FiTrash2,
+  FiInfo,
+  FiAlertCircle
 } from "react-icons/fi";
 import Layout from "../layout/Layout";
 import API_BASE_URL from "../../api";
 import { useAuth } from "../../AuthProvider";
-
 
 function AddDebt() {
   const { user } = useAuth();
@@ -247,7 +249,6 @@ function AddDebt() {
       const amountPaid = parseFloat(formData.amountPaid) || 0;
       const balance = calculateBalance();
 
-
       const payload = {
         customer_name: formData.customerName,
         phone: formData.phone,
@@ -311,46 +312,58 @@ function AddDebt() {
 
   return (
     <Layout>
-      <div className="container mx-auto p-4 max-w-6xl ml-10 mt-12">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Add New Debt</h1>
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">Add New Debt</h1>
+          <p className="text-gray-600 mt-1">Create a new debt record for a customer</p>
+        </div>
 
         {error && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
-            <p>{error}</p>
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-md flex items-start">
+            <FiAlertCircle className="text-red-500 mr-3 mt-0.5 flex-shrink-0" />
+            <p className="text-red-700">{error}</p>
           </div>
         )}
 
         {businessError && (
-          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded">
-            <p>{businessError}</p>
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded-md flex items-start">
+            <FiInfo className="text-yellow-500 mr-3 mt-0.5 flex-shrink-0" />
+            <p className="text-yellow-700">{businessError}</p>
           </div>
         )}
 
         {success && (
-          <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded">
-            <p>Debt created successfully!</p>
+          <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-6 rounded-md flex items-start">
+            <FiInfo className="text-green-500 mr-3 mt-0.5 flex-shrink-0" />
+            <p className="text-green-700">Debt created successfully!</p>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Business Information - Only show for owners */}
           {user?.role === "owner" && (
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">
                 Business
               </h2>
               {loadingBusinesses ? (
-                <p>Loading businesses...</p>
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-pulse flex space-x-2">
+                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                  </div>
+                </div>
               ) : businesses.length > 0 ? (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Business *
                   </label>
                   <select
                     name="businessId"
                     value={formData.businessId}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     required
                   >
                     <option value="">Select a business</option>
@@ -375,31 +388,29 @@ function AddDebt() {
 
           {/* Show business info for non-owners if available */}
           {user?.role !== "owner" && businesses.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">
                 Business
               </h2>
-              <div className="p-3 bg-gray-50 rounded-md">
-                <p className="text-gray-700">
-                  <span className="font-medium">Business:</span>{" "}
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <p className="text-gray-700 font-medium">
                   {businesses[0].name}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  This debt will be automatically associated with your assigned
-                  business
+                  This debt will be automatically associated with your assigned business
                 </p>
               </div>
             </div>
           )}
 
           {/* Customer Information Section */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-              <FiUser className="mr-2" /> Customer Information
+              <FiUser className="mr-2 text-blue-500" /> Customer Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Customer Name *
                 </label>
                 <input
@@ -407,28 +418,33 @@ function AddDebt() {
                   value={formData.customerName}
                   onChange={handleChange}
                   placeholder="John Doe"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Phone Number *
                 </label>
-                <input
-                  name="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="0700123456"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiPhone className="text-gray-400" />
+                  </div>
+                  <input
+                    name="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="0700123456"
+                    className="w-full pl-10 px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    required
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email{" "}
-                  <span className="text-xs text-gray-500">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                  <span className="text-xs text-gray-500 ml-1">
                     (optional, but recommended for reminders)
                   </span>
                 </label>
@@ -438,11 +454,11 @@ function AddDebt() {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="customer@email.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   ID Number
                 </label>
                 <input
@@ -450,34 +466,34 @@ function AddDebt() {
                   value={formData.idNumber}
                   onChange={handleChange}
                   placeholder="National ID"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 />
               </div>
             </div>
           </div>
 
           {/* Items Section */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-4">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
               <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-                <FiFileText className="mr-2" /> Items *
+                <FiFileText className="mr-2 text-blue-500" /> Items *
               </h2>
               <button
                 type="button"
                 onClick={addItem}
-                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               >
-                <FiPlus className="mr-1" /> Add Item
+                <FiPlus className="mr-2" /> Add Item
               </button>
             </div>
 
             {formData.items.map((item, index) => (
               <div
                 key={index}
-                className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-4 items-end"
+                className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-5 items-end p-4 bg-gray-50 rounded-lg"
               >
                 <div className="md:col-span-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Item Name *
                   </label>
                   <input
@@ -485,12 +501,12 @@ function AddDebt() {
                     value={item.name}
                     onChange={(e) => handleItemChange(index, e)}
                     placeholder="e.g. Cement bags"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     required
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Quantity *
                   </label>
                   <input
@@ -500,12 +516,12 @@ function AddDebt() {
                     placeholder="e.g. 10"
                     value={item.quantity}
                     onChange={(e) => handleItemChange(index, e)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     required
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Unit Price *
                   </label>
                   <div className="relative">
@@ -520,13 +536,13 @@ function AddDebt() {
                       placeholder="e.g. 10"
                       value={item.price}
                       onChange={(e) => handleItemChange(index, e)}
-                      className="w-full pl-12 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-12 px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       required
                     />
                   </div>
                 </div>
                 <div className="md:col-span-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Category *
                   </label>
                   <div className="relative">
@@ -538,7 +554,7 @@ function AddDebt() {
                       value={item.category}
                       onChange={(e) => handleItemChange(index, e)}
                       placeholder="e.g. Construction"
-                      className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-10 px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       required
                     />
                   </div>
@@ -548,51 +564,50 @@ function AddDebt() {
                     <button
                       type="button"
                       onClick={() => removeItem(index)}
-                      className="w-full md:w-auto px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                      className="w-full md:w-auto px-3 py-2.5 text-white bg-red-500 hover:bg-red-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors flex items-center justify-center"
+                      title="Remove item"
                     >
-                      Remove
+                      <FiTrash2 className="text-sm" />
                     </button>
                   )}
                 </div>
               </div>
             ))}
 
-            <div className="mt-4 p-3 bg-gray-50 rounded-md">
-              <div className="flex justify-between">
-                <p className="text-lg font-semibold text-gray-800">
-                  Total Amount:{" "}
-                  <span className="text-blue-600">
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+              <div className="flex flex-col md:flex-row justify-between gap-4">
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600">Total Amount</p>
+                  <p className="text-xl font-semibold text-blue-700">
                     Ksh{" "}
                     {totalAmount.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
-                  </span>
-                </p>
-                <p className="text-lg font-semibold text-gray-800">
-                  Balance:{" "}
-                  <span
-                    className={balance > 0 ? "text-red-600" : "text-green-600"}
-                  >
+                  </p>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600">Balance</p>
+                  <p className={`text-xl font-semibold ${balance > 0 ? "text-red-600" : "text-green-600"}`}>
                     Ksh{" "}
                     {balance.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
-                  </span>
-                </p>
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Payment Details Section */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-              <FiDollarSign className="mr-2" /> Payment Details
+              <FiDollarSign className="mr-2 text-blue-500" /> Payment Details
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Amount Paid (Ksh)
                 </label>
                 <div className="relative">
@@ -606,12 +621,12 @@ function AddDebt() {
                     step="0.01"
                     value={formData.amountPaid}
                     onChange={handleChange}
-                    className="w-full pl-12 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-12 px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Due Date
                 </label>
                 <div className="relative">
@@ -623,12 +638,12 @@ function AddDebt() {
                     type="date"
                     value={formData.dueDate}
                     onChange={handleChange}
-                    className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
                 </div>
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Receipt/Reference
                 </label>
                 <input
@@ -636,27 +651,37 @@ function AddDebt() {
                   value={formData.receipt}
                   onChange={handleChange}
                   placeholder="Optional reference note"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 />
               </div>
             </div>
           </div>
 
           {/* Form Actions */}
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={resetForm}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="px-5 py-2.5 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
               Reset Form
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !canSubmit}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isSubmitting ? "Submitting..." : "Create Debt"}
+              {isSubmitting ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Submitting...
+                </span>
+              ) : (
+                "Create Debt"
+              )}
             </button>
           </div>
         </form>
