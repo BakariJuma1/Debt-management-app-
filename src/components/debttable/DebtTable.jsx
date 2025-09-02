@@ -192,7 +192,7 @@ function DebtTable({ debts = [], showActions = true }) {
                           className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         >
                           <FaHistory className="mr-3 text-gray-500" />
-                          View History
+                          View Debt History
                         </button>
                         {(user?.role === 'owner') && (
                           <button
@@ -382,7 +382,7 @@ function DebtTable({ debts = [], showActions = true }) {
                                   className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                                 >
                                   <FaHistory className="mr-3 text-gray-500" />
-                                  View History
+                                  View Debt History
                                 </button>
                                 {(user?.role === 'owner') && (
                                   <button

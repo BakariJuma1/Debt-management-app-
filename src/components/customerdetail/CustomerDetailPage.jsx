@@ -20,16 +20,17 @@ import {
   FiShoppingCart,
   FiUser,
   FiCreditCard,
-  FiCheckCircle
+  FiCheckCircle,
 } from "react-icons/fi";
 import Layout from "../layout/Layout";
 import API_BASE_URL from "../../api";
-import { useAuth } from "../../AuthProvider"; 
+import { useAuth } from "../../AuthProvider";
 
 function CustomerDetailPage() {
   const { customerId } = useParams();
   const navigate = useNavigate();
   const { user, token } = useAuth();
+  const [debt, setDebt] = useState(null);
 
   const [customer, setCustomer] = useState(null);
   const [editedItems, setEditedItems] = useState([]);
@@ -50,40 +51,51 @@ function CustomerDetailPage() {
   const [error, setError] = useState(null);
   const [expandedSections, setExpandedSections] = useState({
     addItem: false,
-    addPayment: false
+    addPayment: false,
   });
+  const [createdByUser, setCreatedByUser] = useState(null);
+
+
 
   useEffect(() => {
     async function fetchCustomerData() {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         const res = await fetch(`${API_BASE_URL}/debts/${customerId}`, {
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         });
-        
+
         if (!res.ok) {
           if (res.status === 403) {
-            throw new Error("Access denied. You don't have permission to view this customer.");
+            throw new Error(
+              "Access denied. You don't have permission to view this customer."
+            );
           }
           throw new Error(`HTTP error! status: ${res.status}`);
         }
-        
-        const customerData = await res.json();
-        
-        if (user.role === 'salesperson' && customerData.created_by !== user.id) {
-          throw new Error("Access denied. You can only view your own customers.");
-        }
 
-        setCustomer(customerData);
+        const customerData = await res.json();
+
+        if (
+          user.role === "salesperson" &&
+          customerData.created_by !== user.id
+        ) {
+          throw new Error(
+            "Access denied. You can only view your own customers."
+          );
+        }
+        
+        setDebt(customerData);
+        setCustomer(customerData.customer);
         setEditedItems(customerData.items || []);
         setPayments(customerData.payments || []);
-        
+        setCreatedByUser(customerData.created_by_user);
+
         await fetchChangeLogs();
-        
       } catch (error) {
         console.error("Error fetching customer data:", error);
         setError(error.message);
@@ -101,15 +113,17 @@ function CustomerDetailPage() {
     try {
       const res = await fetch(`${API_BASE_URL}/changelogs`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
-      
+
       if (res.ok) {
         const logs = await res.json();
-        const debtLogs = logs.filter(log => 
-          log.table_name === 'Debt' && log.record_id == customerId ||
-          log.table_name === 'Payment' && log.new_values?.debt_id == customerId
+        const debtLogs = logs.filter(
+          (log) =>
+            (log.table_name === "Debt" && log.record_id == customerId) ||
+            (log.table_name === "Payment" &&
+              log.new_values?.debt_id == customerId)
         );
         setChangeLogs(debtLogs);
       }
@@ -132,7 +146,9 @@ function CustomerDetailPage() {
     }
   };
 
-  const balance = customer ? (customer.balance || customer.total - (customer.amount_paid || 0)) : 0;
+  const balance = customer
+    ? customer.balance || customer.total - (customer.amount_paid || 0)
+    : 0;
 
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
@@ -160,7 +176,7 @@ function CustomerDetailPage() {
     const updatedItems = [...editedItems, newItem];
     setEditedItems(updatedItems);
     setNewItem({ name: "", quantity: "", price: "", category: "" });
-    setExpandedSections({...expandedSections, addItem: false});
+    setExpandedSections({ ...expandedSections, addItem: false });
   };
 
   const handleInputChange = (e) => {
@@ -178,14 +194,14 @@ function CustomerDetailPage() {
         debt_id: parseInt(customerId),
         amount: parseFloat(newPayment.amount),
         method: newPayment.method,
-        received_by: user.id
+        received_by: user.id,
       };
 
       const res = await fetch(`${API_BASE_URL}/payments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(paymentData),
       });
@@ -195,18 +211,17 @@ function CustomerDetailPage() {
       const newPaymentData = await res.json();
       setPayments([newPaymentData, ...payments]);
       setNewPayment({ amount: "", method: "", received_by: "" });
-      setExpandedSections({...expandedSections, addPayment: false});
-      
+      setExpandedSections({ ...expandedSections, addPayment: false });
+
       const customerRes = await fetch(`${API_BASE_URL}/debts/${customerId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       if (customerRes.ok) {
         const updatedCustomer = await customerRes.json();
         setCustomer(updatedCustomer);
       }
-      
     } catch (error) {
       console.error("Payment error:", error);
       alert("Error adding payment. Please try again.");
@@ -219,17 +234,16 @@ function CustomerDetailPage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ items: editedItems }),
       });
 
       if (!res.ok) throw new Error("Failed to save changes");
-      
+
       const updatedCustomer = await res.json();
       setCustomer(updatedCustomer);
       alert("Changes saved successfully!");
-      
     } catch (error) {
       console.error("Save error:", error);
       alert("Error saving changes. Please try again.");
@@ -240,14 +254,18 @@ function CustomerDetailPage() {
     const itemList = editedItems
       .map(
         (item) =>
-          `- ${item.name} × ${item.quantity} @ Ksh${item.price} (${item.category || "N/A"})`
+          `- ${item.name} × ${item.quantity} @ Ksh${item.price} (${
+            item.category || "N/A"
+          })`
       )
       .join("\n");
 
     const paymentList = payments
       .map(
         (p) =>
-          `- ${new Date(p.payment_date).toLocaleDateString()}: Ksh${p.amount} via ${p.method}, received by ${p.received_by}`
+          `- ${new Date(p.payment_date).toLocaleDateString()}: Ksh${
+            p.amount
+          } via ${p.method}, received by ${p.received_by}`
       )
       .join("\n");
 
@@ -256,7 +274,9 @@ function CustomerDetailPage() {
  Phone: ${customer.phone}
  Total: Ksh${customer.total}
  Balance: Ksh${balance}
- Due Date: ${customer.due_date ? new Date(customer.due_date).toLocaleDateString() : "N/A"}
+ Due Date: ${
+   customer.due_date ? new Date(customer.due_date).toLocaleDateString() : "N/A"
+ }
 
  *Items Taken:*
 ${itemList || "No items listed."}
@@ -270,12 +290,14 @@ ${paymentList || "No payments yet."}
   const toggleSection = (section) => {
     setExpandedSections({
       ...expandedSections,
-      [section]: !expandedSections[section]
+      [section]: !expandedSections[section],
     });
   };
 
-  const canEdit = user?.role === 'owner' || user?.role === 'admin' || 
-                 (user?.role === 'salesperson' && customer?.created_by === user.id);
+  const canEdit =
+    user?.role === "owner" ||
+    user?.role === "admin" ||
+    (user?.role === "salesperson" && customer?.created_by === user.id);
 
   if (isLoading) {
     return (
@@ -294,11 +316,23 @@ ${paymentList || "No payments yet."}
         <div className="max-w-2xl mx-auto p-4 md:p-6 text-center ">
           <div className="bg-red-50 p-4 md:p-6 rounded-xl mb-6">
             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-              <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <svg
+                className="h-6 w-6 text-red-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-red-800 mb-2">Access Error</h3>
+            <h3 className="text-lg font-medium text-red-800 mb-2">
+              Access Error
+            </h3>
             <p className="text-red-700">{error}</p>
           </div>
           <button
@@ -318,12 +352,26 @@ ${paymentList || "No payments yet."}
         <div className="max-w-2xl mx-auto p-4 md:p-6 text-center">
           <div className="bg-yellow-50 p-4 md:p-6 rounded-xl mb-6">
             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
-              <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <svg
+                className="h-6 w-6 text-yellow-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-yellow-800 mb-2">Customer Not Found</h3>
-            <p className="text-yellow-700">The customer you're looking for doesn't exist.</p>
+            <h3 className="text-lg font-medium text-yellow-800 mb-2">
+              Customer Not Found
+            </h3>
+            <p className="text-yellow-700">
+              The customer you're looking for doesn't exist.
+            </p>
           </div>
           <button
             onClick={() => navigate(-1)}
@@ -349,21 +397,36 @@ ${paymentList || "No payments yet."}
               <FaArrowLeft className="mr-2" /> Back
             </button>
             <div>
-              <h1 className="text-xl md:text-3xl font-bold text-gray-900">{customer.customer_name}</h1>
+              <h1 className="text-xl md:text-3xl font-bold text-gray-900">
+                {customer.customer_name}
+              </h1>
               <div className="flex items-center mt-2 text-gray-600">
-                <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
                   <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                 </svg>
                 <span>{customer.phone}</span>
               </div>
-              {(user?.role === 'owner' || user?.role === 'admin') && customer.created_by && (
-                <p className="text-sm text-gray-500 mt-1">
-                  Created by: {customer.created_by_user?.name || `User ${customer.created_by}`}
-                </p>
+              {customer.email && (
+                <div className="flex items-center mt-1 text-gray-600">
+                  <FaEnvelope className="w-4 h-4 mr-2" />
+                  <span>{customer.email}</span>
+                </div>
               )}
+              {(user?.role === "owner" || user?.role === "admin") &&
+                customer.created_by && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Created by:{" "}
+                    {createdByUser?.name ||
+                      `User ${customer.created_by}`}
+                  </p>
+                )}
             </div>
           </div>
-          
+
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => {
@@ -393,7 +456,9 @@ ${paymentList || "No payments yet."}
               </div>
               <div>
                 <p className="text-xs md:text-sm text-gray-500">Total Debt</p>
-                <p className="text-lg md:text-xl font-bold text-gray-900">{formatCurrency(customer.total)}</p>
+                <p className="text-lg md:text-xl font-bold text-gray-900">
+                  {formatCurrency(debt?.total)}
+                </p>
               </div>
             </div>
           </div>
@@ -405,7 +470,7 @@ ${paymentList || "No payments yet."}
               <div>
                 <p className="text-xs md:text-sm text-gray-500">Amount Paid</p>
                 <p className="text-lg md:text-xl font-bold text-green-600">
-                  {formatCurrency(customer.amount_paid || 0)}
+                  {formatCurrency(debt?.amount_paid || 0)}
                 </p>
               </div>
             </div>
@@ -417,7 +482,9 @@ ${paymentList || "No payments yet."}
               </div>
               <div>
                 <p className="text-xs md:text-sm text-gray-500">Balance</p>
-                <p className="text-lg md:text-xl font-bold text-red-600">{formatCurrency(balance)}</p>
+                <p className="text-lg md:text-xl font-bold text-red-600">
+                  {formatCurrency(debt?.balance)}
+                </p>
               </div>
             </div>
           </div>
@@ -429,7 +496,11 @@ ${paymentList || "No payments yet."}
             <nav className="flex min-w-max">
               <button
                 onClick={() => setActiveTab("items")}
-                className={`py-3 md:py-4 px-4 md:px-6 font-medium text-sm flex items-center ${activeTab === "items" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+                className={`py-3 md:py-4 px-4 md:px-6 font-medium text-sm flex items-center ${
+                  activeTab === "items"
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 <FiShoppingCart className="mr-2" /> Items
                 <span className="ml-2 bg-gray-100 text-gray-800 text-xs font-semibold px-2 py-0.5 rounded-full">
@@ -438,7 +509,11 @@ ${paymentList || "No payments yet."}
               </button>
               <button
                 onClick={() => setActiveTab("payments")}
-                className={`py-3 md:py-4 px-4 md:px-6 font-medium text-sm flex items-center ${activeTab === "payments" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+                className={`py-3 md:py-4 px-4 md:px-6 font-medium text-sm flex items-center ${
+                  activeTab === "payments"
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 <FaMoneyBillAlt className="mr-2" /> Payments
                 <span className="ml-2 bg-gray-100 text-gray-800 text-xs font-semibold px-2 py-0.5 rounded-full">
@@ -447,7 +522,11 @@ ${paymentList || "No payments yet."}
               </button>
               <button
                 onClick={() => setActiveTab("history")}
-                className={`py-3 md:py-4 px-4 md:px-6 font-medium text-sm flex items-center ${activeTab === "history" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+                className={`py-3 md:py-4 px-4 md:px-6 font-medium text-sm flex items-center ${
+                  activeTab === "history"
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 <FaHistory className="mr-2" /> History
                 <span className="ml-2 bg-gray-100 text-gray-800 text-xs font-semibold px-2 py-0.5 rounded-full">
@@ -464,14 +543,21 @@ ${paymentList || "No payments yet."}
               <div className="space-y-6">
                 {/* Items List */}
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Items Taken</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">
+                    Items Taken
+                  </h3>
                   {editedItems.length > 0 ? (
                     <div className="bg-gray-50 rounded-lg divide-y divide-gray-200 overflow-x-auto">
                       <div className="min-w-[600px]">
                         {editedItems.map((item, index) => (
-                          <div key={index} className="p-4 grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center">
+                          <div
+                            key={index}
+                            className="p-4 grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center"
+                          >
                             <div className="md:col-span-5">
-                              <label className="block text-xs font-medium text-gray-500 mb-1">Item Name</label>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Item Name
+                              </label>
                               <input
                                 type="text"
                                 name="name"
@@ -483,7 +569,9 @@ ${paymentList || "No payments yet."}
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-xs font-medium text-gray-500 mb-1">Quantity</label>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Quantity
+                              </label>
                               <input
                                 type="number"
                                 name="quantity"
@@ -495,7 +583,9 @@ ${paymentList || "No payments yet."}
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-xs font-medium text-gray-500 mb-1">Price</label>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Price
+                              </label>
                               <input
                                 type="number"
                                 name="price"
@@ -507,7 +597,9 @@ ${paymentList || "No payments yet."}
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Category
+                              </label>
                               <input
                                 type="text"
                                 name="category"
@@ -536,8 +628,12 @@ ${paymentList || "No payments yet."}
                   ) : (
                     <div className="bg-gray-50 rounded-lg p-6 md:p-8 text-center">
                       <FiShoppingCart className="mx-auto h-10 w-10 md:h-12 md:w-12 text-gray-400 mb-3 md:mb-4" />
-                      <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2">No items added</h3>
-                      <p className="text-gray-500 text-sm md:text-base">Add items to this debt record</p>
+                      <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2">
+                        No items added
+                      </h3>
+                      <p className="text-gray-500 text-sm md:text-base">
+                        Add items to this debt record
+                      </p>
                     </div>
                   )}
                 </div>
@@ -557,10 +653,14 @@ ${paymentList || "No payments yet."}
                     {/* Add New Item Section */}
                     <div className="border-t border-gray-200 pt-6">
                       <button
-                        onClick={() => toggleSection('addItem')}
+                        onClick={() => toggleSection("addItem")}
                         className="flex items-center text-blue-600 hover:text-blue-800 mb-4 transition-colors text-sm md:text-base"
                       >
-                        {expandedSections.addItem ? <FiChevronUp className="mr-2" /> : <FiChevronDown className="mr-2" />}
+                        {expandedSections.addItem ? (
+                          <FiChevronUp className="mr-2" />
+                        ) : (
+                          <FiChevronDown className="mr-2" />
+                        )}
                         Add New Item
                       </button>
 
@@ -568,7 +668,9 @@ ${paymentList || "No payments yet."}
                         <div className="bg-blue-50 p-4 md:p-5 rounded-lg">
                           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4">
                             <div className="md:col-span-5">
-                              <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Item Name</label>
+                              <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Item Name
+                              </label>
                               <input
                                 name="name"
                                 placeholder="Item Name"
@@ -578,7 +680,9 @@ ${paymentList || "No payments yet."}
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                              <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Quantity
+                              </label>
                               <input
                                 name="quantity"
                                 type="number"
@@ -589,7 +693,9 @@ ${paymentList || "No payments yet."}
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Price</label>
+                              <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Price
+                              </label>
                               <input
                                 name="price"
                                 type="number"
@@ -600,7 +706,9 @@ ${paymentList || "No payments yet."}
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Category</label>
+                              <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Category
+                              </label>
                               <input
                                 name="category"
                                 placeholder="Category"
@@ -633,10 +741,14 @@ ${paymentList || "No payments yet."}
                 {canEdit && (
                   <div className="border-b border-gray-200 pb-6">
                     <button
-                      onClick={() => toggleSection('addPayment')}
+                      onClick={() => toggleSection("addPayment")}
                       className="flex items-center text-blue-600 hover:text-blue-800 mb-4 transition-colors text-sm md:text-base"
                     >
-                      {expandedSections.addPayment ? <FiChevronUp className="mr-2" /> : <FiChevronDown className="mr-2" />}
+                      {expandedSections.addPayment ? (
+                        <FiChevronUp className="mr-2" />
+                      ) : (
+                        <FiChevronDown className="mr-2" />
+                      )}
                       Add New Payment
                     </button>
 
@@ -644,7 +756,9 @@ ${paymentList || "No payments yet."}
                       <div className="bg-blue-50 p-4 md:p-5 rounded-lg">
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4">
                           <div className="md:col-span-3">
-                            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Amount</label>
+                            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                              Amount
+                            </label>
                             <input
                               name="amount"
                               type="number"
@@ -655,7 +769,9 @@ ${paymentList || "No payments yet."}
                             />
                           </div>
                           <div className="md:col-span-3">
-                            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Method</label>
+                            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                              Method
+                            </label>
                             <select
                               name="method"
                               value={newPayment.method}
@@ -665,7 +781,9 @@ ${paymentList || "No payments yet."}
                               <option value="">Select Method</option>
                               <option value="Cash">Cash</option>
                               <option value="M-Pesa">M-Pesa</option>
-                              <option value="Bank Transfer">Bank Transfer</option>
+                              <option value="Bank Transfer">
+                                Bank Transfer
+                              </option>
                               <option value="Cheque">Cheque</option>
                               <option value="Other">Other</option>
                             </select>
@@ -686,27 +804,51 @@ ${paymentList || "No payments yet."}
 
                 {/* Payment History */}
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Payment History</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">
+                    Payment History
+                  </h3>
                   {payments.length > 0 ? (
                     <div className="bg-gray-50 rounded-lg divide-y divide-gray-200 overflow-x-auto">
                       <div className="min-w-[600px]">
                         {payments.map((payment, i) => (
-                          <div key={i} className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div
+                            key={i}
+                            className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4"
+                          >
                             <div>
-                              <p className="text-xs font-medium text-gray-500">Date</p>
-                              <p className="font-medium text-sm md:text-base">{new Date(payment.payment_date).toLocaleDateString()}</p>
+                              <p className="text-xs font-medium text-gray-500">
+                                Date
+                              </p>
+                              <p className="font-medium text-sm md:text-base">
+                                {new Date(
+                                  payment.payment_date
+                                ).toLocaleDateString()}
+                              </p>
                             </div>
                             <div>
-                              <p className="text-xs font-medium text-gray-500">Amount</p>
-                              <p className="font-medium text-green-600 text-sm md:text-base">{formatCurrency(payment.amount)}</p>
+                              <p className="text-xs font-medium text-gray-500">
+                                Amount
+                              </p>
+                              <p className="font-medium text-green-600 text-sm md:text-base">
+                                {formatCurrency(payment.amount)}
+                              </p>
                             </div>
                             <div>
-                              <p className="text-xs font-medium text-gray-500">Method</p>
-                              <p className="text-sm md:text-base">{payment.method}</p>
+                              <p className="text-xs font-medium text-gray-500">
+                                Method
+                              </p>
+                              <p className="text-sm md:text-base">
+                                {payment.method}
+                              </p>
                             </div>
                             <div>
-                              <p className="text-xs font-medium text-gray-500">Received By</p>
-                              <p className="text-sm md:text-base">{payment.received_by}</p>
+                              <p className="text-xs font-medium text-gray-500">
+                                Received By
+                              </p>
+                              <p className="text-sm md:text-base">
+                                {payment.received_by_user?.name ||
+                                  payment.received_by}
+                              </p>
                             </div>
                           </div>
                         ))}
@@ -715,8 +857,12 @@ ${paymentList || "No payments yet."}
                   ) : (
                     <div className="bg-gray-50 rounded-lg p-6 md:p-8 text-center">
                       <FaMoneyBillAlt className="mx-auto h-10 w-10 md:h-12 md:w-12 text-gray-400 mb-3 md:mb-4" />
-                      <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2">No payments yet</h3>
-                      <p className="text-gray-500 text-sm md:text-base">Payments will appear here once added</p>
+                      <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2">
+                        No payments yet
+                      </h3>
+                      <p className="text-gray-500 text-sm md:text-base">
+                        Payments will appear here once added
+                      </p>
                     </div>
                   )}
                 </div>
@@ -726,7 +872,9 @@ ${paymentList || "No payments yet."}
             {/* History Tab */}
             {activeTab === "history" && (
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Change History</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Change History
+                </h3>
                 {changeLogs.length > 0 ? (
                   <div className="space-y-4">
                     {changeLogs.map((log, i) => (
@@ -740,11 +888,15 @@ ${paymentList || "No payments yet."}
                           </span>
                         </div>
                         <p className="text-sm text-gray-600 mb-2">
-                          Changed by: {log.changed_by_user?.name || `User ${log.changed_by}`}
+                          Changed by:{" "}
+                          {log.changed_by_user?.name ||
+                            `User ${log.changed_by}`}
                         </p>
                         {log.old_values && (
                           <div className="mb-2">
-                            <p className="text-xs font-medium text-gray-500">Previous values:</p>
+                            <p className="text-xs font-medium text-gray-500">
+                              Previous values:
+                            </p>
                             <pre className="text-xs text-gray-600 bg-white p-2 rounded mt-1 overflow-x-auto">
                               {JSON.stringify(log.old_values, null, 2)}
                             </pre>
@@ -752,7 +904,9 @@ ${paymentList || "No payments yet."}
                         )}
                         {log.new_values && (
                           <div>
-                            <p className="text-xs font-medium text-gray-500">New values:</p>
+                            <p className="text-xs font-medium text-gray-500">
+                              New values:
+                            </p>
                             <pre className="text-xs text-gray-600 bg-white p-2 rounded mt-1 overflow-x-auto">
                               {JSON.stringify(log.new_values, null, 2)}
                             </pre>
@@ -764,8 +918,12 @@ ${paymentList || "No payments yet."}
                 ) : (
                   <div className="bg-gray-50 rounded-lg p-6 md:p-8 text-center">
                     <FaHistory className="mx-auto h-10 w-10 md:h-12 md:w-12 text-gray-400 mb-3 md:mb-4" />
-                    <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2">No changes recorded</h3>
-                    <p className="text-gray-500 text-sm md:text-base">Changes will appear here once made</p>
+                    <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2">
+                      No changes recorded
+                    </h3>
+                    <p className="text-gray-500 text-sm md:text-base">
+                      Changes will appear here once made
+                    </p>
                   </div>
                 )}
               </div>
