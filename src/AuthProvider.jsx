@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
 
       if (token && user) {
         try {
-          const response = await axios.get(`${API_BASE_URL}/verify`, {
+          const response = await axios.get(`${API_BASE_URL}/me`, {
             headers: { Authorization: `Bearer ${token}` }
           });
 
