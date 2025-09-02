@@ -217,7 +217,7 @@ function CustomerDetailPage() {
   const handleSaveChanges = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/debts/${customerId}`, {
-        method: "PATCH",
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           'Authorization': `Bearer ${token}`
