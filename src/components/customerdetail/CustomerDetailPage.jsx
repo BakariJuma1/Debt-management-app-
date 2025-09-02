@@ -38,7 +38,6 @@ function CustomerDetailPage() {
   const [newPayment, setNewPayment] = useState({
     amount: "",
     method: "",
-    received_by: "",
   });
   const [newItem, setNewItem] = useState({
     name: "",
@@ -169,7 +168,7 @@ function CustomerDetailPage() {
   };
 
   const handleAddPayment = async () => {
-    if (!newPayment.amount || !newPayment.method || !newPayment.received_by) {
+    if (!newPayment.amount || !newPayment.method) {
       alert("Please fill in all payment fields");
       return;
     }
@@ -179,7 +178,7 @@ function CustomerDetailPage() {
         debt_id: parseInt(customerId),
         amount: parseFloat(newPayment.amount),
         method: newPayment.method,
-        received_by: newPayment.received_by
+        received_by: user.id
       };
 
       const res = await fetch(`${API_BASE_URL}/payments`, {
@@ -406,11 +405,7 @@ ${paymentList || "No payments yet."}
               <div>
                 <p className="text-xs md:text-sm text-gray-500">Amount Paid</p>
                 <p className="text-lg md:text-xl font-bold text-green-600">
-                  {formatCurrency(
-                    payments
-                      .filter(p => p.method && p.method.toLowerCase() === "initial")
-                      .reduce((total, p) => total + p.amount, 0)
-                  )}
+                  {formatCurrency(customer.amount_paid || 0)}
                 </p>
               </div>
             </div>
@@ -674,16 +669,6 @@ ${paymentList || "No payments yet."}
                               <option value="Cheque">Cheque</option>
                               <option value="Other">Other</option>
                             </select>
-                          </div>
-                          <div className="md:col-span-4">
-                            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Received By</label>
-                            <input
-                              name="received_by"
-                              placeholder="Received By"
-                              value={newPayment.received_by}
-                              onChange={handleInputChange}
-                              className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
                           </div>
                           <div className="md:col-span-2 flex items-end">
                             <button

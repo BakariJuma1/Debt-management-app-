@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FiPlus, FiDollarSign, FiCalendar, FiUser, FiPhone, FiFileText, FiTag } from "react-icons/fi";
+import {
+  FiPlus,
+  FiDollarSign,
+  FiCalendar,
+  FiUser,
+  FiPhone,
+  FiFileText,
+  FiTag,
+} from "react-icons/fi";
 import Layout from "../layout/Layout";
 import API_BASE_URL from "../../api";
 import { useAuth } from "../../AuthProvider";
+import { EmailAuthCredential } from "firebase/auth/web-extension";
 
 function AddDebt() {
   const { user } = useAuth();
@@ -16,12 +25,13 @@ function AddDebt() {
     customerName: "",
     phone: "",
     idNumber: "",
+    email: "",
     items: [
       {
         name: "",
         quantity: 1,
         price: 0,
-        category: "", 
+        category: "",
       },
     ],
     amountPaid: 0,
@@ -40,46 +50,52 @@ function AddDebt() {
     const fetchBusinesses = async () => {
       setLoadingBusinesses(true);
       setBusinessError(null);
-      
+
       try {
-        if (user?.role === 'owner') {
+        if (user?.role === "owner") {
           // Owners need to select a business
           const response = await axios.get(`${API_BASE_URL}/businesses`, {
-            headers: { 
-              "Authorization": `Bearer ${localStorage.getItem('token')}`
-            }
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
           });
-          
+
           let businessesData = [];
-          
+
           if (Array.isArray(response.data)) {
             businessesData = response.data;
           } else if (response.data && Array.isArray(response.data.businesses)) {
             businessesData = response.data.businesses;
-          } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+          } else if (
+            response.data &&
+            response.data.data &&
+            Array.isArray(response.data.data)
+          ) {
             businessesData = response.data.data;
           }
-          
+
           setBusinesses(businessesData);
-          
+
           if (businessesData.length > 0) {
-            setFormData(prev => ({
+            setFormData((prev) => ({
               ...prev,
-              businessId: businessesData[0].id || businessesData[0]._id
+              businessId: businessesData[0].id || businessesData[0]._id,
             }));
           } else {
-            setBusinessError("No businesses found. Please create a business first.");
+            setBusinessError(
+              "No businesses found. Please create a business first."
+            );
           }
         } else {
           // For non-owners, just check if they have a business assigned
           const response = await axios.get(`${API_BASE_URL}/business/my`, {
-            headers: { 
-              "Authorization": `Bearer ${localStorage.getItem('token')}`
-            }
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
           });
-          
+
           let businessData = null;
-          
+
           if (response.data) {
             if (Array.isArray(response.data)) {
               businessData = response.data[0];
@@ -91,22 +107,28 @@ function AddDebt() {
               businessData = response.data;
             }
           }
-          
+
           if (businessData) {
             setHasBusinessAssigned(true);
             setBusinesses([businessData]);
             // Don't set businessId in formData for non-owners - backend handles it
           } else {
-            setBusinessError("No business assigned to you. Please contact your administrator.");
+            setBusinessError(
+              "No business assigned to you. Please contact your administrator."
+            );
             setHasBusinessAssigned(false);
           }
         }
       } catch (err) {
         console.error("Error fetching businesses:", err);
         if (err.response?.status === 404) {
-          setBusinessError("No business found. Please create a business first.");
+          setBusinessError(
+            "No business found. Please create a business first."
+          );
         } else {
-          setBusinessError("Failed to load business information. Please try again.");
+          setBusinessError(
+            "Failed to load business information. Please try again."
+          );
         }
         setHasBusinessAssigned(false);
       } finally {
@@ -121,12 +143,12 @@ function AddDebt() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
-    setFormData(prev => {
+    setFormData((prev) => {
       const updatedItems = [...prev.items];
       updatedItems[index] = { ...updatedItems[index], [name]: value };
       return { ...prev, items: updatedItems };
@@ -134,7 +156,7 @@ function AddDebt() {
   };
 
   const addItem = () => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       items: [...prev.items, { name: "", quantity: 1, price: 0, category: "" }],
     }));
@@ -142,7 +164,7 @@ function AddDebt() {
 
   const removeItem = (index) => {
     if (formData.items.length <= 1) return;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       items: prev.items.filter((_, i) => i !== index),
     }));
@@ -152,7 +174,7 @@ function AddDebt() {
     return formData.items.reduce((acc, item) => {
       const quantity = parseFloat(item.quantity) || 0;
       const price = parseFloat(item.price) || 0;
-      return acc + (quantity * price);
+      return acc + quantity * price;
     }, 0);
   };
 
@@ -174,32 +196,36 @@ function AddDebt() {
     }
 
     // Business validation based on user role
-    if (user?.role === 'owner' && !formData.businessId) {
+    if (user?.role === "owner" && !formData.businessId) {
       setError("Business selection is required");
       return false;
     }
 
-    if (user?.role !== 'owner' && !hasBusinessAssigned) {
-      setError("No business assigned to you. Please contact your administrator.");
+    if (user?.role !== "owner" && !hasBusinessAssigned) {
+      setError(
+        "No business assigned to you. Please contact your administrator."
+      );
       return false;
     }
 
-    if (formData.items.some(item => !item.name.trim())) {
+    if (formData.items.some((item) => !item.name.trim())) {
       setError("All items must have a name");
       return false;
     }
 
-    if (formData.items.some(item => !item.category.trim())) {
+    if (formData.items.some((item) => !item.category.trim())) {
       setError("All items must have a category");
       return false;
     }
 
-    if (formData.items.some(item => isNaN(item.quantity) || item.quantity <= 0)) {
+    if (
+      formData.items.some((item) => isNaN(item.quantity) || item.quantity <= 0)
+    ) {
       setError("All items must have a valid quantity");
       return false;
     }
 
-    if (formData.items.some(item => isNaN(item.price) || item.price < 0)) {
+    if (formData.items.some((item) => isNaN(item.price) || item.price < 0)) {
       setError("All items must have a valid price");
       return false;
     }
@@ -210,7 +236,7 @@ function AddDebt() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setIsSubmitting(true);
@@ -220,34 +246,35 @@ function AddDebt() {
       const total = calculateTotal();
       const amountPaid = parseFloat(formData.amountPaid) || 0;
       const balance = calculateBalance();
-      
-      // Create payload - backend will handle business_id automatically
+
+
       const payload = {
         customer_name: formData.customerName,
         phone: formData.phone,
         id_number: formData.idNumber,
-        items: formData.items.map(item => ({
+        email: formData.email,
+        items: formData.items.map((item) => ({
           name: item.name,
           quantity: parseFloat(item.quantity),
           price: parseFloat(item.price),
-          category: item.category
+          category: item.category,
         })),
         due_date: formData.dueDate || null,
         amount_paid: amountPaid,
         total: total,
         balance: balance,
-        receipt: formData.receipt || ""
+        receipt: formData.receipt || "",
       };
 
       // Only include business_id for owners (who need to select which business)
-      if (user?.role === 'owner') {
+      if (user?.role === "owner") {
         payload.business_id = formData.businessId;
       }
 
       const { data } = await axios.post(`${API_BASE_URL}/debts`, payload, {
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
 
@@ -256,7 +283,10 @@ function AddDebt() {
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       console.error("Error creating debt:", err.response?.data || err.message);
-      setError(err.response?.data?.message || "Failed to create debt. Please try again.");
+      setError(
+        err.response?.data?.message ||
+          "Failed to create debt. Please try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -272,9 +302,12 @@ function AddDebt() {
   const balance = calculateBalance();
 
   // Check if form can be submitted
-  const canSubmit = !loadingBusinesses && 
-                   !isSubmitting && 
-                   (user?.role === 'owner' ? businesses.length > 0 && formData.businessId : hasBusinessAssigned);
+  const canSubmit =
+    !loadingBusinesses &&
+    !isSubmitting &&
+    (user?.role === "owner"
+      ? businesses.length > 0 && formData.businessId
+      : hasBusinessAssigned);
 
   return (
     <Layout>
@@ -301,9 +334,11 @@ function AddDebt() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Business Information - Only show for owners */}
-          {user?.role === 'owner' && (
+          {user?.role === "owner" && (
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Business</h2>
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                Business
+              </h2>
               {loadingBusinesses ? (
                 <p>Loading businesses...</p>
               ) : businesses.length > 0 ? (
@@ -319,29 +354,39 @@ function AddDebt() {
                     required
                   >
                     <option value="">Select a business</option>
-                    {businesses.map(business => (
-                      <option key={business.id || business._id} value={business.id || business._id}>
+                    {businesses.map((business) => (
+                      <option
+                        key={business.id || business._id}
+                        value={business.id || business._id}
+                      >
                         {business.name}
                       </option>
                     ))}
                   </select>
                 </div>
               ) : (
-                <p className="text-red-500">{businessError || "No business available. Please create a business first."}</p>
+                <p className="text-red-500">
+                  {businessError ||
+                    "No business available. Please create a business first."}
+                </p>
               )}
             </div>
           )}
 
           {/* Show business info for non-owners if available */}
-          {user?.role !== 'owner' && businesses.length > 0 && (
+          {user?.role !== "owner" && businesses.length > 0 && (
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Business</h2>
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                Business
+              </h2>
               <div className="p-3 bg-gray-50 rounded-md">
                 <p className="text-gray-700">
-                  <span className="font-medium">Business:</span> {businesses[0].name}
+                  <span className="font-medium">Business:</span>{" "}
+                  {businesses[0].name}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  This debt will be automatically associated with your assigned business
+                  This debt will be automatically associated with your assigned
+                  business
                 </p>
               </div>
             </div>
@@ -378,6 +423,22 @@ function AddDebt() {
                   placeholder="0700123456"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email{" "}
+                  <span className="text-xs text-gray-500">
+                    (optional, but recommended for reminders)
+                  </span>
+                </label>
+                <input
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="customer@email.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div>
@@ -436,6 +497,7 @@ function AddDebt() {
                     name="quantity"
                     type="number"
                     min="1"
+                    placeholder="e.g. 10"
                     value={item.quantity}
                     onChange={(e) => handleItemChange(index, e)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -455,6 +517,7 @@ function AddDebt() {
                       type="number"
                       min="0"
                       step="0.01"
+                      placeholder="e.g. 10"
                       value={item.price}
                       onChange={(e) => handleItemChange(index, e)}
                       className="w-full pl-12 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -499,13 +562,23 @@ function AddDebt() {
                 <p className="text-lg font-semibold text-gray-800">
                   Total Amount:{" "}
                   <span className="text-blue-600">
-                    Ksh {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Ksh{" "}
+                    {totalAmount.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </span>
                 </p>
                 <p className="text-lg font-semibold text-gray-800">
                   Balance:{" "}
-                  <span className={balance > 0 ? "text-red-600" : "text-green-600"}>
-                    Ksh {balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <span
+                    className={balance > 0 ? "text-red-600" : "text-green-600"}
+                  >
+                    Ksh{" "}
+                    {balance.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </span>
                 </p>
               </div>
