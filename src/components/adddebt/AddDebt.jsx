@@ -12,7 +12,7 @@ import {
 import Layout from "../layout/Layout";
 import API_BASE_URL from "../../api";
 import { useAuth } from "../../AuthProvider";
-import { EmailAuthCredential } from "firebase/auth/web-extension";
+
 
 function AddDebt() {
   const { user } = useAuth();
