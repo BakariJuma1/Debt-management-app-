@@ -152,8 +152,8 @@ const MobileOwnerDashboard = () => {
 
       const queryString = params.toString();
       const url = queryString
-        ? `${API_BASE_URL}/export-owner?${queryString}`
-        : `${API_BASE_URL}/export-owner`;
+        ? `${API_BASE_URL}/export/business?${queryString}`
+        : `${API_BASE_URL}/export/business`;
 
       const token = localStorage.getItem("token");
       const response = await fetch(url, {
@@ -173,7 +173,7 @@ const MobileOwnerDashboard = () => {
       const urlObject = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = urlObject;
-      link.setAttribute("download", "owner-report.csv");
+      link.setAttribute("download", "business_report.pdf");
       document.body.appendChild(link);
       link.click();
       link.remove();
