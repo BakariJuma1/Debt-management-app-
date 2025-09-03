@@ -188,7 +188,8 @@ const BusinessOwnerDashboard = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 md:mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Business Owner Dashboard</h1>
+            <h1 className="text-2xl font-bold text-gray-800">{dashboardData?.businessName || "Business Owner Dashboard" }</h1>
+            
             <p className="text-gray-500 mt-1">Comprehensive overview of your business performance</p>
           </div>
           
