@@ -41,16 +41,15 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Process user data with business info
-    const processUserData = (userData, businessData) => {
-      if (!userData) return null;
-      return {
-        ...userData,
-        hasBusiness: userData.role === 'owner' 
-          ? businessData !== null
-          : !!userData.business_id,
-        business: businessData || null
-      };
+  const processUserData = (userData, businessData) => {
+    return {
+      ...userData,
+      hasBusiness: userData.role === 'owner' 
+        ? businessData !== null
+        : !!userData.business_id,
+      business: businessData || null
     };
+  };
 
   // Persist auth state to context and localStorage
   const persistAuthState = (userData, token) => {
@@ -87,10 +86,6 @@ const updateUser = async (updatedData) => {
    console.log('Updating user with:', updatedData);
   return new Promise(resolve => {
     setAuthState(prev => {
-      if (!prev.user) {
-        resolve(null);
-        return { ...prev, user: null };
-      }
       const updatedUser = {
         ...prev.user,
         ...updatedData,
@@ -98,6 +93,7 @@ const updateUser = async (updatedData) => {
           ? updatedData.owned_businesses?.length > 0
           : !!updatedData.business_id
       };
+      
       localStorage.setItem("user", JSON.stringify(updatedUser));
       resolve(updatedUser);
       return { ...prev, user: updatedUser };
@@ -108,9 +104,6 @@ const updateUser = async (updatedData) => {
   // Specialized business update
   const updateBusiness = (businessData) => {
     setAuthState(prev => {
-      if (!prev.user) {
-        return { ...prev, user: null };
-      }
       const updatedUser = {
         ...prev.user,
         hasBusiness: true,
