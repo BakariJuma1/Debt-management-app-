@@ -163,8 +163,8 @@ function BusinessInfoForm({ isInSidebar = false }) {
         }
       });
       
-      console.log('Business created:', response.data);
-      await handleBusinessCreationSuccess(response.data);
+      // console.log('Business created:', response.data);
+      await handleBusinessCreationSuccess(response.data,isCreating);
       
       // Update business state with only the necessary fields
       if (response.data.business) {
@@ -227,6 +227,13 @@ function BusinessInfoForm({ isInSidebar = false }) {
 
       setOwner(response.data);
       updateUser(response.data);
+      setOwnerForm(
+        {
+          name:response.data.name,
+          email:response.data.email,
+          phone:response.data.phone || "",
+        }
+      )
       setIsOwnerModalOpen(false);
     } catch (err) {
       console.error("Owner update failed:", err);
