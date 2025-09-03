@@ -15,6 +15,8 @@ import {
 import Layout from "../layout/Layout";
 import API_BASE_URL from "../../api";
 import { useAuth } from "../../AuthProvider";
+import MobileTopBar from "../mobiletopbar/MobileTopbar"; 
+
 
 function AddDebt() {
   const { user } = useAuth();
@@ -312,6 +314,7 @@ function AddDebt() {
 
   return (
     <Layout>
+      
       <div className="container mx-auto px-4 py-6 max-w-6xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Add New Debt</h1>

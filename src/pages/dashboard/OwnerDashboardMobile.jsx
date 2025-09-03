@@ -585,7 +585,7 @@ const MobileOwnerDashboard = () => {
     <div className="min-h-screen bg-gray-50 pb-16">
       {/* Header with your custom MobileTopBar */}
       <MobileTopBar
-        title="Business Dashboard"
+        title={dashboardData?.business?.name || "Business Dashboard"}
         isLoading={isLoading}
         onRefresh={fetchDashboardData}
         className="sticky top-0 z-10"
@@ -750,13 +750,6 @@ const MobileOwnerDashboard = () => {
         {/* Dashboard Content */}
         {dashboardData ? (
           <div>
-            {dashboardData?.business?.name && (
-              <div className="mb-2 text-center">
-                <h1 className="text-xl font-bold text-indigo-700">
-                  {dashboardData.business.name}
-                </h1>
-              </div>
-            )}
             {/* Tab Navigation */}
             <div className="flex border-b border-gray-200 mb-4">
               <button
