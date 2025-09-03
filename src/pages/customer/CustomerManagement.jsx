@@ -16,6 +16,7 @@ import {
   FiChevronUp,
   FiGrid,
   FiList,
+  FiDownload
 } from "react-icons/fi";
 import { useAuth } from "../../AuthProvider";
 import axios from "axios";
@@ -262,7 +263,32 @@ const CustomerManagement = () => {
       setSendingReminders((prev) => ({ ...prev, [debtId]: false }));
     }
   };
-
+  const handleDownloadReceipt = async (debtId,customerId) => {
+    try {
+      
+      const response = await axios.get(
+        `${API_BASE_URL}/export/receipt/customer/${customerId}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob", 
+        }
+      );
+     
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `receipt_INV-${debtId.toString().padStart(5, "0")}.pdf`
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      setError("Failed to download receipt");
+    }
+  };
   const canEdit = () => {
     return user?.role === "owner" || user?.role === "admin";
   };
@@ -358,9 +384,11 @@ const CustomerManagement = () => {
                   onChange={handleSearchChange}
                 />
               </div>
-              
+
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 whitespace-nowrap">Sort by:</span>
+                <span className="text-sm text-gray-600 whitespace-nowrap">
+                  Sort by:
+                </span>
                 <div className="flex bg-white rounded-lg border border-gray-300 overflow-hidden">
                   <button
                     className={`px-3 py-2 text-sm flex items-center ${
@@ -619,7 +647,9 @@ const CustomerManagement = () => {
                             {customer.email && (
                               <p className="text-xs md:text-sm text-gray-500 flex items-center mt-1">
                                 <FiMail className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />{" "}
-                                <span className="truncate">{customer.email}</span>
+                                <span className="truncate">
+                                  {customer.email}
+                                </span>
                               </p>
                             )}
                           </div>
@@ -792,9 +822,7 @@ const CustomerManagement = () => {
                                     <div>
                                       <p className="text-gray-500">Paid</p>
                                       <p className="text-green-600">
-                                        {formatCurrency(
-                                          debt.amount_paid || 0
-                                        )}
+                                        {formatCurrency(debt.amount_paid || 0)}
                                       </p>
                                     </div>
                                     <div>
@@ -807,6 +835,16 @@ const CustomerManagement = () => {
 
                                   {balance > 0 && (
                                     <div className="flex justify-end">
+                                      <button
+                                        onClick={() =>
+                                          handleDownloadReceipt(debt.id,customer.id)
+                                        }
+                                        className="text-blue-600 hover:text-blue-800 text-xs md:text-sm font-medium flex items-center"
+                                        title="Download Receipt"
+                                      >
+                                        <FiDownload className="mr-1 h-3 w-3" />
+                                        Receipt
+                                      </button>
                                       <button
                                         onClick={() =>
                                           sendReminder(debt.id, customer.id)

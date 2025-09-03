@@ -55,8 +55,6 @@ function CustomerDetailPage() {
   });
   const [createdByUser, setCreatedByUser] = useState(null);
 
-
-
   useEffect(() => {
     async function fetchCustomerData() {
       try {
@@ -88,7 +86,7 @@ function CustomerDetailPage() {
             "Access denied. You can only view your own customers."
           );
         }
-        
+
         setDebt(customerData);
         setCustomer(customerData.customer);
         setEditedItems(customerData.items || []);
@@ -247,6 +245,27 @@ function CustomerDetailPage() {
     } catch (error) {
       console.error("Save error:", error);
       alert("Error saving changes. Please try again.");
+    }
+  };
+  const handleDownloadCustomerReceipt = async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/export/receipt/customer/${customerId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!response.ok) throw new Error("Failed to download receipt");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `receipts_customer_${customerId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      setError("Failed to download receipt");
     }
   };
 
@@ -420,8 +439,7 @@ ${paymentList || "No payments yet."}
                 customer.created_by && (
                   <p className="text-sm text-gray-500 mt-1">
                     Created by:{" "}
-                    {createdByUser?.name ||
-                      `User ${customer.created_by}`}
+                    {createdByUser?.name || `User ${customer.created_by}`}
                   </p>
                 )}
             </div>
@@ -439,7 +457,7 @@ ${paymentList || "No payments yet."}
               <FaEnvelope className="mr-2" /> WhatsApp
             </button>
             <button
-              onClick={() => console.log("Export PDF")}
+              onClick={handleDownloadCustomerReceipt}
               className="inline-flex items-center px-3 py-2 md:px-4 md:py-2 border border-gray-300 text-gray-700 font-medium rounded-lg md:rounded-xl hover:bg-gray-50 transition-colors shadow-sm text-sm md:text-base"
             >
               <FaFilePdf className="mr-2" /> PDF
