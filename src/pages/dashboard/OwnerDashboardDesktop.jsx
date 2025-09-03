@@ -139,17 +139,17 @@ const BusinessOwnerDashboard = () => {
   };
 
   const handleExportData = async () => {
-    console.log("Export button clicked");
+    
     try {
       const token = localStorage.getItem("token");
-      console.log("Token:", token);
+    
       const response = await fetch(`${API_BASE_URL}/export/business`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("Response status:", response.status);
+      
       if (!response.ok) throw new Error("Failed to export business data");
       const blob = await response.blob();
-      console.log("Blob size:", blob.size);
+     
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -295,7 +295,6 @@ const BusinessOwnerDashboard = () => {
 
             <button
               onClick={() => {
-                console.log("Button clicked");
                 handleExportData();
               }}
               disabled={exporting}
