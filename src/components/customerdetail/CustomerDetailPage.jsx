@@ -405,7 +405,7 @@ ${paymentList || "No payments yet."}
 
   return (
     <Layout>
-      <div className="container mx-auto p-3 md:p-4 max-w-6xl  md:mt-12">
+      <div className="container mx-auto p-3 md:p-4 max-w-6xl  md:mt-12 lg:ml-10">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-start justify-between mb-6 md:mb-8">
           <div className="flex items-start mb-4 md:mb-0">
