@@ -67,7 +67,6 @@ const SalespersonSettings = () => {
     setError('');
     setSuccess('');
 
-    // Validate passwords match if changing password
     if (formData.password && formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
